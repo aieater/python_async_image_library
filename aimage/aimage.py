@@ -20,7 +20,7 @@ if "DEBUG" in os.environ:
             return __builtin__.print(*args, **kwargs)
 
 _dopen = open
-import platform,subprocess,sys,time,glob,multiprocessing,threading,traceback,pathlib,json,math,configparser,inspect,mimetypes
+import random,platform,subprocess,sys,time,glob,multiprocessing,threading,traceback,pathlib,json,math,configparser,inspect,mimetypes
 try:
     import queue
 except ImportError:
@@ -359,10 +359,12 @@ class AggressiveImageGenerator:
             data_aug_params[k] = str(data_aug_params[k])
         self.data_aug_params = data_aug_params
 
+        self.stub_buffer = []
         self.output_buffer = []
         self.datas = None
         self.is_tree = self.loss == "binary_crossentropy"
         self.sync_reset()
+
 
     def sync_reset(self):
         entry = self.entry
@@ -424,12 +426,12 @@ class AggressiveImageGenerator:
         j={}
         try:
             import json
-            j = json.loads(open(self.label_path).read())
+            j = json.loads(_dopen(self.label_path).read())
         except:
             pass
         classes = self.make_class(entry=self.entry, loss=self.loss, class_dict=j)
         self.label_json = json.dumps(classes)
-        with open(self.label_path,"w") as fp:
+        with _dopen(self.label_path, "w") as fp:
             fp.write(self.label_json)
 
         self.classes = classes
@@ -459,6 +461,7 @@ class AggressiveImageGenerator:
                 ret[0].append(d["image"])
                 ret[1].append(d["signals"])
                 #d["points"])
+            
             ret[0] = np.array(ret[0],dtype=np.float32)
             ret[1] = np.array(ret[1],dtype=np.float32)
             if self.rescale != 1.0:
@@ -466,7 +469,6 @@ class AggressiveImageGenerator:
 
         return ret
     def get_data_block(self,batch_size):
-        print("get_data_block")
         if self.total == 0:
             raise "Zero length"
         while True:
@@ -476,23 +478,30 @@ class AggressiveImageGenerator:
                     dlen    = len(ds)
                     self.q  += dlen
                     stream  = list()
-                    input   = dict()
-                    input["data_aug_params"] = self.data_aug_params
+                    # input   = dict()
+                    # input["data_aug_params"] = self.data_aug_params
                     for image_path in ds:
                         signals = self.make_signal(self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"]     = image_path
+                        d["image"] = cv2.resize(load(image_path), (self.target_size[0],self.target_size[1]),interpolation=cv2.INTER_AREA)
+
+# data_aug_params
+# {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
+#     'target_size': (224, 224, 3), 'data_align': True, 'rescale': 0.00392156862745098, 'shuffle': True, 'data_aug_params': {'resize_width': 224, 'resize_height': 224}}
+
                         d["signals"]        = np.array(signals,dtype=np.float32)
                         d["points_table"]   = None
                         stream.append(d)
-                    input["stream"] = stream
+                    # input["stream"] = stream
                         # //    {
                         # //      params:{
                         # //          data_aug_params:{}
                         # //      },
                         # //      stream: [{image_path:"",signals:[],points_table:[]},{},{},{},]
                         # //    }
-                    native_module.async_image_loader_with_data_aug_input(str(hex(id(self))),input)
+                    self.stub_buffer += stream
+                    # native_module.async_image_loader_with_data_aug_input(str(hex(id(self))),input)
                     self.iindex += dlen
                 else:
                     # random.shuffle(self.datas)
@@ -508,7 +517,8 @@ class AggressiveImageGenerator:
             self.oindex += len(buf)
             return buf
         while True:
-            ret = native_module.async_image_loader_with_data_aug_output(str(hex(id(self))))
+            #ret = native_module.async_image_loader_with_data_aug_output(str(hex(id(self))))
+            ret = self.stub_buffer
             if ret is not None and len(ret) > 0:
                 self.q -= len(ret)
                 self.output_buffer += ret
@@ -597,7 +607,8 @@ class AggressiveImageGenerator:
 
 
     def set(self,**kwargs):
-        for k in kwargs: setattr(self,k,kwargs[k])
+        for k in kwargs:
+            setattr(self,k,kwargs[k])
 
 
     def make_full_aug_params():
@@ -672,15 +683,15 @@ class AggressiveImageGeneratorForOD:
                     dlen    = len(ds)
                     self.q  += dlen
                     stream  = list()
-                    input   = dict()
-                    input["data_aug_params"] = self.data_aug_params
+                    #input   = dict()
+                    #input["data_aug_params"] = self.data_aug_params
                     for d in ds:
                         dd = dict()
                         dd["image_path"]     = d["file_path"]
                         dd["image"]          = load(d["file_path"])
                         dd["points_table"]   = d["bounding_box_table"]
                         stream.append(dd)
-                    input["stream"] = stream
+                    #input["stream"] = stream
                         # //    {
                         # //      params:{
                         # //          data_aug_params:{}
