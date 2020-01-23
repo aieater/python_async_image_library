@@ -112,9 +112,13 @@ def load(path): #@public
     t,ext = mimetypes.guess_type(path)[0].split("/")
     if t == "image":
         img = cv2.imread(path, 3)
+        if img is None:
+            print(CRED,"\n\nInvalid image file or invalid path. \"%s\"\n\n"%(path,),CRESET)
+            raise "Invalid file or invalid path."
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    else:
-        print(path,"is not image file.")
+    print(CRED,"\n\nInvalid image file or invalid path. \"%s\"\n\n"%(path,),CRESET)
+    return None
+    
 
 def gamma(img,g): #@public
     lookUpTable = np.empty((1,256), np.uint8)
