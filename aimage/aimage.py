@@ -325,7 +325,7 @@ def draw_box(image, box, color, caption=None): #@public
 
 
 try:
-    from native_aimage import *
+    from aimage_native import *
     print(CCYAN+"========================================================"+CRESET)
     print(CCYAN+"Aggressive 3D image augmentation is available."+CRESET)
     print(CCYAN+"Fastest async image loader is available."+CRESET)
