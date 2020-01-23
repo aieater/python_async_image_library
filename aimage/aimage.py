@@ -339,7 +339,9 @@ except:
     print(CRED+" - aimage is superior to the data augmentation systems built into DeepLearning frameworks such as TensorFlow and PyTorch."+CRESET)
     print(CRED+" If you want to get suport for paid license, please contact support@pegara.com."+CRESET)
     print(CRED+"==========================================================================="+CRESET)
-    print("Using unoptimized aimage library.")
+    print()
+    print(CRED+"Using unoptimized aimage library."+CRESET)
+    print()
     pass
 
 
