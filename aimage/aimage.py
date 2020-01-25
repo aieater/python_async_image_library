@@ -71,7 +71,41 @@ def _cshow_(image):
 def _gshow_(image):
     return _cv2_imshow_("",image)
 
+def bchw2bhwc(ts): #@public
+    s = len(ts.size())
+    return ts.transpose(s - 3, s - 2).transpose(s - 2, s - 1)
 
+def bhwc2bchw(ts): #@public
+    s = len(ts.size())
+    return ts.transpose(s - 2, s - 1).transpose(s - 3, s - 2)
+
+def concat_bhwc_image(ts):
+    ts = np.array(ts)
+    bsize = len(ts)
+    rt = int(math.ceil(math.sqrt(bsize)))
+    i = 0
+    row = None
+    for y in range(rt):
+        col = None
+        for x in range(rt):
+            if i>=bsize:
+                break
+            b = ts[i]
+            if col is not None:
+                col = cv2.hconcat([col,b])
+            else:
+                col = b
+            i+=1
+        if row is not None:
+            try:
+                row = cv2.vconcat([row,col])
+            except:
+                pass
+        else:
+            row = col
+        if i==bsize-1:
+            break
+    return np.array(row*255,dtype=np.uint8)
 
 def rgb2bgr(img): #@public
     if img.shape[2] != 3:
@@ -118,7 +152,7 @@ def load(path): #@public
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     print(CRED,"\n\nInvalid image file or invalid path. \"%s\"\n\n"%(path,),CRESET)
     return None
-    
+
 
 def gamma(img,g): #@public
     lookUpTable = np.empty((1,256), np.uint8)
@@ -461,7 +495,7 @@ class AggressiveImageGenerator:
                 ret[0].append(d["image"])
                 ret[1].append(d["signals"])
                 #d["points"])
-            
+
             ret[0] = np.array(ret[0],dtype=np.float32)
             ret[1] = np.array(ret[1],dtype=np.float32)
             if self.rescale != 1.0:
