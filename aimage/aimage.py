@@ -18,6 +18,12 @@ if "DEBUG" in os.environ:
             s = inspect.stack()
             __builtin__.print("\033[47m%s@%s(%s):\033[0m "%(rpad(s[1][1],20), lpad(str(s[1][3]),10), rpad(str(s[1][2]),4)),end="")
             return __builtin__.print(*args, **kwargs)
+def _pre_(): print("\033[A                                                                \033[A",flush=True)
+def mkdir_p(path):
+    try: os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path): pass
+        else: raise
 
 _dopen = open
 import random,platform,subprocess,sys,time,glob,multiprocessing,threading,traceback,pathlib,json,math,configparser,inspect,mimetypes
