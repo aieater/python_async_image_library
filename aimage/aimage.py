@@ -331,6 +331,8 @@ def generate_colors(C=200): #@public
         color_table.append((int(cc[0]),int(cc[1]),int(cc[2])))
     return color_table
 
+COLOR_TABLE=generate_colors(1024) #public
+
 def draw_box(image, box, color, caption=None): #@public
     if type(box) == np.ndarray:
         if len(box.shape) == 1 and len(box) == 4:
