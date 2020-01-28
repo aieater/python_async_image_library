@@ -863,7 +863,7 @@ class _key_observer_:
         import threading
         import queue
         q = queue.Queue()
-        thread = threading.Thread(target=KeyObserver.__th_observe_key__,args=(q,),daemon=True)
+        thread = threading.Thread(target=_key_observer_.__th_observe_key__,args=(q,),daemon=True)
         thread.start()
         self.q = q
         self.th = thread
@@ -899,12 +899,8 @@ except:
 
 
 if __name__ == "__main__":
-    filename = inspect.getframeinfo(inspect.currentframe()).filename
-    path = os.path.dirname(os.path.abspath(filename))
-    img = load(os.path.join(path,"../sample.png"))
-    draw_fill_rect(img,[100,120],[120,200],(255,0,0))
-    show(img)
-    wait(0)
+    k = make_key_observer()
+    print(k.get())
 
 
 
