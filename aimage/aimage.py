@@ -831,6 +831,52 @@ class AggressiveImageGeneratorForOD:
         pass
 
 
+
+
+
+class _key_observer_:
+    def __th_observe_key__(q):
+        import sys
+        import time
+        import termios
+        import contextlib
+        @contextlib.contextmanager
+        def raw_mode(file):
+            old_attrs = termios.tcgetattr(file.fileno())
+            new_attrs = old_attrs[:]
+            new_attrs[3] = new_attrs[3] & ~(termios.ECHO | termios.ICANON)
+            try:
+                termios.tcsetattr(file.fileno(), termios.TCSADRAIN, new_attrs)
+                yield
+            finally:
+                termios.tcsetattr(file.fileno(), termios.TCSADRAIN, old_attrs)
+
+        with raw_mode(sys.stdin):
+            try:
+                while True:
+                    n = ord(sys.stdin.read(1))
+                    q.put(n)
+            except:
+                print("Error")
+                pass
+    def __init__(self):
+        import threading
+        import queue
+        q = queue.Queue()
+        thread = threading.Thread(target=KeyObserver.__th_observe_key__,args=(q,),daemon=True)
+        thread.start()
+        self.q = q
+        self.th = thread
+    def get(self):
+        try:
+            return self.q.get_nowait()
+        except:
+            return None
+        
+def make_key_observer(): #@public
+    return _key_observer_()
+
+
 try:
     from aimage_native import *
     print(CCYAN+"========================================================"+CRESET)
