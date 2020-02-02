@@ -124,6 +124,19 @@ def draw_image_alpha(img,img_rgba,sx,sy): #@public
     print("Does not support alpha channel.")
     return img
 
+def draw_footer(img,message,color=(255,200,55),bg=(55,55,55)): #@public
+    h,w,c = img.shape
+    cv2.rectangle(img, (0,h), (w,h-20), bg, -1)
+    fontScale = 1
+    cv2.putText(img, message, (5,h-4), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+
+def draw_title(img,message,color=(255,200,55),bg=(55,55,55)): #@public
+    h,w,c = img.shape
+    cv2.rectangle(img, (0,0), (w,20), bg, -1)
+    fontScale = 1
+    cv2.putText(img, message, (5,17), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+
+
 def is_image_ext(f): #@public
     e = f.split(".")[-1].lower()
     if e == "jpg":  return True
