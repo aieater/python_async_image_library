@@ -66,6 +66,8 @@ def _cv2_imshow_(mes,image):
         __front_flag_for_opencv_problem__ = True
         if platform.system() == "Darwin":
             os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+            cv2.moveWindow("", 0, 0)
+
     return ret
 
 def _ipython_imshow_(image):
@@ -892,7 +894,7 @@ class _key_observer_:
             return self.q.get_nowait()
         except:
             return None
-        
+
 def make_key_observer(): #@public
     return _key_observer_()
 
