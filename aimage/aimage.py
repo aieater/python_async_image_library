@@ -56,10 +56,17 @@ def _opencv_encoder_(data,**kargs):
         raise "Invalid image data"
     return data
 
+__front_flag_for_opencv_problem__ = False
 def _cv2_imshow_(mes,image):
+    global __front_flag_for_opencv_problem__
     image = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
     cv2.imshow(mes,image)
-    return cv2.waitKey(1)
+    ret = cv2.waitKey(1)
+    if __front_flag_for_opencv_problem__ == False:
+        __front_flag_for_opencv_problem__ = True
+        if platform.system() == "Darwin":
+            os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+    return ret
 
 def _ipython_imshow_(image):
     import IPython.display
@@ -912,8 +919,14 @@ except:
 
 
 if __name__ == "__main__":
-    k = make_key_observer()
-    print(k.get())
+    kl = make_key_observer()
+    while True:
+        k = kl.get()
+        if k == 27: break
+        img = load("/Volumes/Untitled/realtime_storage/15.jpeg")
+        show(img)
+        wait(1)
+
 
 
 
