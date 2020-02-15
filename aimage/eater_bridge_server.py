@@ -39,7 +39,6 @@ from bridge_protocol import StreamIO
 import bridge_protocol as bp
 
 
-
 class StackedServerSocketProtocol(protocol.Protocol):
     def __init__(self, factory, addr):
         self.addr = addr
@@ -64,15 +63,19 @@ class StackedServerSocketProtocol(protocol.Protocol):
         self.uuid = str(uuid.uuid4())
         self.factory.clients[self.uuid] = self
         print("C:"+str(self.addr))
+
     def connectionLost(self, reason):
         import aimage
         aimage.delete_queue(self.queue_name)
         self.is_available = False
         del self.factory.clients[self.uuid]
         print("D:"+str(self.addr)+str(reason))
+
     def dataReceived(self, data):
         self.bandwidth_inbound += len(data)
-        if self.is_available: self.input_middlewares[0].write(data)
+        if self.is_available:
+            self.input_middlewares[0].write(data)
+
     def update(self):
         if time.time() - self.tm > 1.0:
             if len(self.in_ave_q) > 3:
@@ -80,7 +83,7 @@ class StackedServerSocketProtocol(protocol.Protocol):
                 self.out_ave_q.pop(0)
             self.in_ave_q.append(self.bandwidth_inbound)
             self.out_ave_q.append(self.bandwidth_outbound)
-            print("%.2fMB/s, %.2fMB/s (I/O)"% ((np.mean(self.in_ave_q)/1024/1024),(np.mean(self.out_ave_q)/1024/1024)) )
+            print("%.2fMB/s, %.2fMB/s (I/O)" % ((np.mean(self.in_ave_q)/1024/1024), (np.mean(self.out_ave_q)/1024/1024)))
             self.tm = time.time()
             self.bandwidth_inbound = 0
             self.bandwidth_outbound = 0
@@ -112,12 +115,12 @@ class StackedServerSocketProtocol(protocol.Protocol):
             except:
                 pass
 
-    def read(self,size=-1):
+    def read(self, size=-1):
         if self.is_available:
             return self.input_middlewares[-1].read(size)
         return []
 
-    def write(self,objects):
+    def write(self, objects):
         if self.is_available:
             self.output_middlewares[0].write(objects)
 
@@ -125,37 +128,42 @@ class ObjectTable:
     def __init__(self):
         self.data_table = {}
         pass
+
     def setDataBlocks(self):
         pass
+
     def getDataBlocks(self):
         pass
 
 
 class StreamFactory(protocol.Factory):
-    def __init__(self,**kargs):
+    def __init__(self, **kargs):
         self.quality = kargs["quality"]
         self.clients = {}
         self.update()
+
     def buildProtocol(self, addr):
-        s = StackedServerSocketProtocol(self,addr)
+        s = StackedServerSocketProtocol(self, addr)
         s.queue_name = str(uuid.uuid4())
         s.input_middlewares.append(bp.LengthSplitIn())
         s.input_middlewares.append(bp.ImageDecoder(queue_name=s.queue_name,))
-        s.output_middlewares.append(bp.ImageEncoder(queue_name=s.queue_name,quality=self.quality))
+        s.output_middlewares.append(bp.ImageEncoder(queue_name=s.queue_name, quality=self.quality))
         s.output_middlewares.append(bp.LengthSplitOut())
         # s.input_middlewares.append(bp.DirectStream())
         # s.output_middlewares.append(bp.DirectStream())
         return s
-    def getDataBlocksAsArray(self,size=-1):
+
+    def getDataBlocksAsArray(self, size=-1):
         socket_datamap_array = []
         for k in self.clients:
             client_socket = self.clients[k]
             block = client_socket.read()
             if len(block) > 0:
                 for data in block:
-                    socket_datamap_array.append({"socket":k,"data":data})
+                    socket_datamap_array.append({"socket": k, "data": data})
         return socket_datamap_array
-    def setDataBlocksFromArray(self,socket_datamap_array):
+
+    def setDataBlocksFromArray(self, socket_datamap_array):
         for obj in socket_datamap_array:
             k = obj["socket"]
             data = obj["data"]
@@ -170,17 +178,17 @@ class StreamFactory(protocol.Factory):
         reactor.callLater(0.001, self.update)
 
 # batch_data,src_block,rest_block
-def slice_as_batch_size(data_queue,batch_size):
+def slice_as_batch_size(data_queue, batch_size):
     socket_mapper = []
     batch_data = []
     cnt = 0
-    while len(socket_mapper)<batch_size and len(data_queue) > 0:
+    while len(socket_mapper) < batch_size and len(data_queue) > 0:
         obj = data_queue.pop(0)
         socket_mapper.append(obj)
         batch_data.append(obj["data"])
     return batch_data, socket_mapper, data_queue
 
-def pack_array_datablock(socket_mapper,modified_data):
+def pack_array_datablock(socket_mapper, modified_data):
     dst_mapper = []
     pre = None
     for i in range(len(socket_mapper)):
@@ -191,7 +199,7 @@ def pack_array_datablock(socket_mapper,modified_data):
 
 
 class EaterBridgeServer(object):
-    def getDataBlocksAsArray(self,size=-1):
+    def getDataBlocksAsArray(self, size=-1):
         try:
             if self.input_queue.empty() == False:
                 obj = self.input_queue.get_nowait()
@@ -200,7 +208,8 @@ class EaterBridgeServer(object):
             traceback.print_exc()
             pass
         return []
-    def setDataBlocksFromArray(self,a):
+
+    def setDataBlocksFromArray(self, a):
         try:
             if self.output_queue.full() == False:
                 self.output_queue.put_nowait(a)
@@ -214,12 +223,12 @@ class EaterBridgeServer(object):
     #     return self.factory.getDataBlocksAsArray(size)
     # def setDataBlocksFromArray(self,a):
     #     self.factory.setDataBlocksFromArray(a)
-    def __init__(self,**kargs):
+    def __init__(self, **kargs):
         self.input_queue = multiprocessing.Queue()
         self.output_queue = multiprocessing.Queue()
         self.signal_queue = multiprocessing.Queue()
 
-        print("Start server","tcp:"+str(kargs["port"]))
+        print("Start server", "tcp:"+str(kargs["port"]))
         parameter_block = []
         protocol = "tcp"
         if kargs["ssl"]:
@@ -227,7 +236,7 @@ class EaterBridgeServer(object):
         parameter_block.append(protocol)
         parameter_block.append(str(kargs["port"]))
         if len(kargs["host"]):
-            parameter_block.append("interface="+kargs["host"].replace(":","\\:"))
+            parameter_block.append("interface="+kargs["host"].replace(":", "\\:"))
         if len(kargs["key"]):
             parameter_block.append("privateKey="+kargs["key"])
         if len(kargs["crt"]):
@@ -237,8 +246,9 @@ class EaterBridgeServer(object):
         print(parameter)
         endpoints.serverFromString(reactor, parameter).listen(self.factory)
 
-        def runner(input_queue,output_queue,signal_queue):
+        def runner(input_queue, output_queue, signal_queue):
             import aimage
+
             def __update__():
                 try:
                     if input_queue.full() == False:
@@ -261,11 +271,10 @@ class EaterBridgeServer(object):
             __update__()
             reactor.run(False)
 
-        self.thread = multiprocessing.Process(target=runner,args=(self.input_queue,self.output_queue,self.signal_queue),daemon=True)
+        self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue), daemon=True)
         self.thread.start()
         # self.thread = threading.Thread(target=runner,args=(self.input_queue,self.output_queue),daemon=True)
         # self.thread.start()
-
 
         # self.thread = multiprocessing.Process(target=reactor.run,args=(False,),daemon=True)
         # self.thread.start()
@@ -274,6 +283,7 @@ class EaterBridgeServer(object):
         # self.thread.start()
 
     def update(self): pass
+
     def destroy(self):
         self.signal_queue.put_nowait(None)
 
@@ -283,46 +293,41 @@ class EaterBridgeServer(object):
             time.sleep(0.001)
 
 
-
 if __name__ == '__main__':
 
     from PIL import Image, ImageFont, ImageDraw
 
     import argparse
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--inference',type=str, default="demo_object_detection",help='')
-    parser.add_argument('--ssl',action='store_true',help='')
-    parser.add_argument('--crt',type=str, default="",help='signed certificate file path')
-    parser.add_argument('--key',type=str, default="",help='private key file path')
-    parser.add_argument('--port',type=int, default=3000,help='')
-    parser.add_argument('--host',type=str, default="localhost",help='')
-    parser.add_argument('--quality',type=int, default=85,help='')
+    parser.add_argument('--inference', type=str, default="demo_object_detection", help='')
+    parser.add_argument('--ssl', action='store_true', help='')
+    parser.add_argument('--crt', type=str, default="", help='signed certificate file path')
+    parser.add_argument('--key', type=str, default="", help='private key file path')
+    parser.add_argument('--port', type=int, default=3000, help='')
+    parser.add_argument('--host', type=str, default="localhost", help='')
+    parser.add_argument('--quality', type=int, default=85, help='')
     args = parser.parse_args()
 
-
     import eater_bridge_server as ebs
-    
-    class SomthingModel():
-        def detect_image(self,img):
-            return cv2.cvtColor(np.array(img),cv2.COLOR_RGB2BGR)
-            
 
+    class TestModel():
+        def detect_image(self, img):
+            return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
     class DemoServer(ebs.EaterBridgeServer):
-        def __init__(self,**kargs):
+        def __init__(self, **kargs):
             super().__init__(**kargs)
             self.data_queue = []
-            self.model = SomthingModel()
+            self.model = TestModel()
 
-
-        def update(self):
+        def update(self):  # Override
             if self.model is None:
                 pass
                 # import yolov3
                 # self.model = yolov3.YOLO()
             self.data_queue += bridge.getDataBlocksAsArray()
             if len(self.data_queue) > 0:
-                batch_data, socket_mapper, self.data_queue = ebs.slice_as_batch_size(self.data_queue,128)
+                batch_data, socket_mapper, self.data_queue = ebs.slice_as_batch_size(self.data_queue, 128)
 
                 if self.model is not None:
                     batch_data = np.uint8(batch_data)
@@ -344,7 +349,7 @@ if __name__ == '__main__':
                         # data = batch_data[i]
                         # batch_data[i] = cv2.cvtColor(np.array(batch_data[i]),cv2.COLOR_BGR2RGB)
 
-                stored_datablocks = ebs.pack_array_datablock(socket_mapper,batch_data)
+                stored_datablocks = ebs.pack_array_datablock(socket_mapper, batch_data)
                 bridge.setDataBlocksFromArray(stored_datablocks)
 
     bridge = DemoServer(**args.__dict__)
