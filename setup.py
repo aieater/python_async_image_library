@@ -13,6 +13,8 @@ install_requires = [
     'imgcat',
     'PyOpenGL',
     'acapture',
+    'twisted',
+    'service_identity',
 ]
 
 readme = open("README.md").read()
