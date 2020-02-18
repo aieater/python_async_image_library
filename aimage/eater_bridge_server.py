@@ -303,7 +303,7 @@ if __name__ == '__main__':
     parser.add_argument('--ssl', action='store_true', help='')
     parser.add_argument('--crt', type=str, default="", help='signed certificate file path')
     parser.add_argument('--key', type=str, default="", help='private key file path')
-    parser.add_argument('--port', type=int, default=3000, help='')
+    parser.add_argument('--port', type=int, default=3001, help='')
     parser.add_argument('--host', type=str, default="localhost", help='')
     parser.add_argument('--quality', type=int, default=85, help='')
     args = parser.parse_args()

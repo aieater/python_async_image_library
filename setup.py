@@ -14,6 +14,7 @@ install_requires = [
     'PyOpenGL',
     'acapture',
     'twisted',
+    'tqdm',
     'service_identity',
 ]
 

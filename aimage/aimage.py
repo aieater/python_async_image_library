@@ -33,6 +33,7 @@ except ImportError:
     import Queue as queue
 import numpy as np
 import cv2
+import tqdm
 
 
 CRED = '\033[0;31m'
@@ -163,6 +164,31 @@ def is_image_ext(f):  # @public
     if e == "gif":
         return True
     return False
+
+def opencv_decoder(data):
+    b = data
+    nb = np.asarray(b,dtype=np.uint8)
+    data = cv2.imdecode(nb,cv2.IMREAD_COLOR)
+    data = cv2.cvtColor(data,cv2.COLOR_BGR2RGB)
+    return data
+def opencv_encoder(data,**kargs):
+    quality = 90
+    if "quality" in kargs:
+        quality = kargs["quality"]
+    data = cv2.cvtColor(data,cv2.COLOR_BGR2RGB)
+    check,data = cv2.imencode(".jpg",data,[int(cv2.IMWRITE_JPEG_QUALITY), quality]) # quality 1-100
+    if check == False:
+        raise "Invalid image data"
+    return data
+def pillow_decoder(data):
+    d = np.array(Image.open(BytesIO(data)))
+    return d
+def pillow_encoder(data,**kargs):
+    image = Image.fromarray(data)
+    d = BytesIO()
+    image.save(d, format="jpeg")
+    return d
+
 
 def decoder(data):  # @public
     return _opencv_decoder_(data)
@@ -419,29 +445,57 @@ def draw_box(image, box, color, caption=None):  # @public
 # Stub
 class AggressiveImageGenerator:
     def __init__(self, **kwargs):
+        """
+        kwargs:
+         - verbose: True / False # display detail
+         - shuffle: True / False # shuffle data
+         - entry: <input data path>
+         - label_path: <output label path> for resume
+         - loss: "binary_crossentropy" / "categorical_crossentropy" 
+         - target_size: (w,h,c) # shape
+         - data_align: True / False # adjust data length for each classes
+         - rescale: 1/255.0
+         - data_aug_params: dict{}
+         - progress_bar: True / False
+         - batch_size: 128
+        """
+
+
         entry = kwargs["entry"]
-        if entry == "/":
-            raise "Can't specify root path"
-        if entry[-1] == '/':
-            entry = entry[0:-1]
-        if entry == ".":
-            raise "Invalid path"
-        if os.path.exists(entry) == False:
-            raise "Does not exist path"
+        if entry        == "/": raise "Can't specify root path"
+        if entry[-1]    == '/': entry = entry[0:-1]
+        if entry        == ".": raise "Invalid path"
+        if os.path.exists(entry) == False: raise "Does not exist path"
+
         self.loss = "categorical_crossentropy"
+        self.verbose = False
+        self.progress_bar = True
+        self.pbar = None
+        self.shuffle = False
+        self.batch_size = 128
+        self.label_path = "output.label"
+        self.target_size = (256,256,3)
+        self.rescale = 1/255.0
+        self.data_aug_params = {"resize_width":256,"resize_height":256}
+        
         self.set(**kwargs)
-        print(kwargs)
+
+
+        if self.verbose:
+            print(kwargs)
 
         self.q = 0
         self.iindex = 0
-        print("=============================================")
+        if self.verbose:
+            print("=============================================")
         self.oindex = 0
         self.STREAM_BATCH = 16
 
         self.label_name = os.path.basename(self.entry)
         self.build_classes()
 
-        print(self.classes)
+        if self.verbose:
+            print(self.classes)
 
         data_aug_params = kwargs["data_aug_params"]
 
@@ -458,6 +512,46 @@ class AggressiveImageGenerator:
         self.datas = None
         self.is_tree = self.loss == "binary_crossentropy"
         self.sync_reset()
+
+        
+
+    def shape(self):
+        return self.target_size
+
+    def length(self):
+        return self.total
+
+    def set_description(self,s):
+        if self.pbar:
+            self.pbar.set_description(s)
+        pass
+
+    def __iter__(self):
+        self.ite = 0
+        if self.pbar:
+            self.pbar.refresh()
+            self.pbar.close()
+            self.pbar = None
+        if self.progress_bar:
+            self.pbar = tqdm.tqdm(total=self.length(), leave=True, file=sys.stdout)
+        return self
+
+    def __next__(self):
+        if self.total > self.ite:
+            ret = self.get_batch(self.batch_size)
+            dlen = len(ret[0])
+            if self.pbar:
+              self.pbar.update(dlen)
+            self.ite += dlen
+            return [*ret, self.ite]
+        else:
+            if self.pbar:
+                self.pbar.refresh()
+                self.pbar.close()
+                self.pbar = None
+            self.sync_reset()
+            raise StopIteration()
+
 
     def sync_reset(self):
         entry = self.entry
@@ -488,8 +582,10 @@ class AggressiveImageGenerator:
                 vlen = len(v)
                 if vlen > vmax:
                     vmax = vlen
-                print(self.get_name(k), ":", vlen)
-            print("Max => ", vmax)
+                if self.verbose:
+                    print(self.get_name(k), ":", vlen)
+            if self.verbose:
+                print("Max => ", vmax)
             for k in table:
                 v = table[k]
                 i = 0
@@ -504,7 +600,8 @@ class AggressiveImageGenerator:
                 vlen = len(v)
                 new_datas += v
             if self.data_align:
-                print("Total", len(self.datas), "=>", vmax, "x", len(table), "=>", len(new_datas))
+                if self.verbose:
+                    print("Total", len(self.datas), "=>", vmax, "x", len(table), "=>", len(new_datas))
                 self.datas = new_datas
                 for i in class_index_table:
                     class_index_table[i]["total"] = vmax
@@ -514,6 +611,8 @@ class AggressiveImageGenerator:
             random.shuffle(self.datas)
         self.iindex = 0
         self.oindex = 0
+
+
 
     def build_classes(self):
         j = {}
@@ -564,6 +663,7 @@ class AggressiveImageGenerator:
 
     def get_data_block(self, batch_size):
         if self.total == 0:
+            print("Zero length")
             raise "Zero length"
         while True:
             if self.q < 1024:
@@ -603,7 +703,6 @@ class AggressiveImageGenerator:
                     break
             else:
                 break
-
         if self.iindex == self.oindex:
             return None
         if len(self.output_buffer) >= batch_size or self.iindex == self.oindex + len(self.output_buffer):
@@ -650,11 +749,13 @@ class AggressiveImageGenerator:
             class_dict[class_name] = {"index": index}
 
     def make_class(self, entry, *, loss="binary_crossentropy", class_dict={}):
-        print("Entrypoint => ", entry)
+        if self.verbose:
+            print("Entrypoint => ", entry)
         class_table_by_index = {}
         class_table_by_name = {}
         elen = len(entry)
-        print(loss)
+        if self.verbose:
+            print(loss)
         if loss == "categorical_crossentropy":
             class_names = [os.path.basename(f) for f in glob.glob(os.path.join(entry, "*")) if os.path.isdir(f)]
             # print(class_names)
