@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import contextlib
 import importlib
 import os
 def to_bool(s): return s in [1, "True", "TRUE", "true", "1", "yes", "Yes", "Y", "y", "t", "on"]

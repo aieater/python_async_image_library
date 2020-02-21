@@ -15,6 +15,7 @@ except ImportError:
 import numpy as np
 import cv2
 import termios
+import contextlib
 
 
 def _ipython_imshow_(image):

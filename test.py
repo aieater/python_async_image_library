@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 import aimage
 import cv2
 import os
@@ -43,4 +44,5 @@ for x,y,z,i in g:
     for img in x:
         aimage.show(img*255)
         aimage.wait(0)
+
 

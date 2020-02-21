@@ -104,12 +104,8 @@ class AggressiveImageGenerator:
 
     def __iter__(self):
         self.ite = 0
-        if self.pbar:
-            self.pbar.refresh()
-            self.pbar.close()
-            self.pbar = None
         if self.progress_bar:
-            self.pbar = tqdm.tqdm(total=self.length(), leave=True, file=sys.stdout)
+            self.pbar = tqdm.tqdm(total=self.length(), leave=False, file=sys.stdout)
         return self
 
     def __next__(self):
@@ -122,8 +118,8 @@ class AggressiveImageGenerator:
             return [*ret, self.ite]
         else:
             if self.pbar:
-                self.pbar.refresh()
                 self.pbar.close()
+                self.pbar.refresh()
                 self.pbar = None
             self.sync_reset()
             raise StopIteration()
