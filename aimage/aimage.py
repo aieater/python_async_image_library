@@ -477,6 +477,7 @@ class AggressiveImageGenerator:
         self.target_size = (256,256,3)
         self.rescale = 1/255.0
         self.data_aug_params = {"resize_width":256,"resize_height":256}
+        self.cache_table = {}
         
         self.set(**kwargs)
 
@@ -513,6 +514,15 @@ class AggressiveImageGenerator:
         self.is_tree = self.loss == "binary_crossentropy"
         self.sync_reset()
 
+    def get_image(self,url,size):
+        bt = len(self.cache_table)*self.target_size[0]*self.target_size[1]*3*4
+        if url in self.cache_table:
+            return self.cache_table[url]
+        img = cv2.resize(load(url), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
+        if bt < 1024*1024*1024*4:
+            self.cache_table[url] = img
+
+        return img
         
 
     def shape(self):
@@ -678,7 +688,7 @@ class AggressiveImageGenerator:
                         signals = self.make_signal(self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"] = image_path
-                        d["image"] = cv2.resize(load(image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
+                        d["image"] = self.get_image(image_path,(self.target_size[0], self.target_size[1]))
 
 # data_aug_params
 # {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
