@@ -2,9 +2,9 @@
 
 from aimage.head import *
 from aimage.img import *
+from aimage.ui import *
 from aimage.stub_data_loader_od import *
 from aimage.stub_data_loader import *
-from aimage.ui import *
 
 
 try:

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import random
 import time
+_dopen = open
+from aimage.head import *
+from aimage.img import *
+from aimage.ui import *
+
 
 
 class AggressiveImageGeneratorForOD:

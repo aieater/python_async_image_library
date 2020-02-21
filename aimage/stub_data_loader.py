@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+_dopen = open
 import os
 import random
 import sys
@@ -12,6 +12,9 @@ import numpy as np
 import cv2
 import tqdm
 
+from aimage.head import *
+from aimage.img import *
+from aimage.ui import *
 
 
 
@@ -214,7 +217,9 @@ class AggressiveImageGenerator:
     def get_classes(self):
         return self.clasess
 
-    def get_batch(self, batch_size):
+    def get_batch(self, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
         block = self.get_data_block(batch_size)
         ret = [[], [], []]
         if block:
@@ -247,7 +252,7 @@ class AggressiveImageGenerator:
                         signals = self.make_signal(self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"] = image_path
-                        d["image"] = cv2.resize(load(image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
+                        d["image"] = cv2.resize(load_image(image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
 
 # data_aug_params
 # {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
