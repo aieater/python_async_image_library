@@ -113,6 +113,9 @@ def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
     fontScale = 1
     cv2.putText(img, message, (5, 17), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
 
+def draw_text(img, message, x=5, y=17, color=(255, 200, 55), fontScale=1):  # @public
+    cv2.putText(img, message, (x, y), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+
 
 def is_image_ext(f):  # @public
     e = f.split(".")[-1].lower()
