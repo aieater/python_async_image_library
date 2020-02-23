@@ -104,8 +104,8 @@ class AggressiveImageGeneratorForOD:
             d.set("random_equalization", 1 if FD else 0.1)
 
             d.set("random_bilateral", 1 if FD else 0.1)
-            d.set("random_mosic", 1 if FD else 0.1)
-            d.set("mosic_shift_range", 1)
+            d.set("random_mosaic", 1 if FD else 0.1)
+            d.set("mosaic_shift_range", 1)
 
             d.set("random_cos", 1 if FD else 0.1)
             d.set("random_hsv", 1 if FD else 0.5)

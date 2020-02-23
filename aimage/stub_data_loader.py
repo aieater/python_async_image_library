@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
-_dopen = open
-import os
-import random
-import sys
-import time
-import glob
-import pathlib
-import json
-
-import numpy as np
-import cv2
-import tqdm
-
-from aimage.head import *
-from aimage.img import *
 from aimage.ui import *
-
+from aimage.img import *
+from aimage.head import *
+import tqdm
+import cv2
+import numpy as np
+import json
+import pathlib
+import glob
+import time
+import sys
+import random
+import os
+_dopen = open
 
 
 # Stub
@@ -105,7 +102,8 @@ class AggressiveImageGenerator:
     def __iter__(self):
         self.ite = 0
         if self.progress_bar:
-            self.pbar = tqdm.tqdm(total=self.length(), leave=False, file=sys.stdout)
+            self.pbar = tqdm.tqdm(total=self.length(),
+                                  leave=False, file=sys.stdout)
         return self
 
     def __next__(self):
@@ -113,7 +111,7 @@ class AggressiveImageGenerator:
             ret = self.get_batch(self.batch_size)
             dlen = len(ret[0])
             if self.pbar:
-              self.pbar.update(dlen)
+                self.pbar.update(dlen)
             self.ite += dlen
             return [*ret, self.ite]
         else:
@@ -133,7 +131,8 @@ class AggressiveImageGenerator:
             table = {}
             for clazz in self.classes:
                 c = self.classes[clazz]
-                class_index_table[c["index"]] = {"name": clazz, "results": [], "total": 0}
+                class_index_table[c["index"]] = {
+                    "name": clazz, "results": [], "total": 0}
             for filename in pathlib.Path(entry).glob('**/*.jpg'):
                 filename = str(filename)
                 self.datas.append(filename)
@@ -172,7 +171,8 @@ class AggressiveImageGenerator:
                 new_datas += v
             if self.data_align:
                 if self.verbose:
-                    print("Total", len(self.datas), "=>", vmax, "x", len(table), "=>", len(new_datas))
+                    print("Total", len(self.datas), "=>", vmax,
+                          "x", len(table), "=>", len(new_datas))
                 self.datas = new_datas
                 for i in class_index_table:
                     class_index_table[i]["total"] = vmax
@@ -189,7 +189,8 @@ class AggressiveImageGenerator:
             j = json.loads(_dopen(self.label_path).read())
         except:
             pass
-        classes = self.make_class(entry=self.entry, loss=self.loss, class_dict=j)
+        classes = self.make_class(
+            entry=self.entry, loss=self.loss, class_dict=j)
         self.label_json = json.dumps(classes)
         with _dopen(self.label_path, "w") as fp:
             fp.write(self.label_json)
@@ -238,17 +239,20 @@ class AggressiveImageGenerator:
         while True:
             if self.q < 1024:
                 if self.iindex < self.total:
-                    ds = self.datas[self.iindex: self.iindex + self.STREAM_BATCH]
+                    ds = self.datas[self.iindex: self.iindex +
+                                    self.STREAM_BATCH]
                     dlen = len(ds)
                     self.q += dlen
                     stream = list()
                     # input   = dict()
                     # input["data_aug_params"] = self.data_aug_params
                     for image_path in ds:
-                        signals = self.make_signal(self.entry, image_path, self.classes)
+                        signals = self.make_signal(
+                            self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"] = image_path
-                        d["image"] = cv2.resize(load_image(image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
+                        d["image"] = cv2.resize(load_image(
+                            image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
 
 # data_aug_params
 # {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
@@ -327,7 +331,8 @@ class AggressiveImageGenerator:
         if self.verbose:
             print(loss)
         if loss == "categorical_crossentropy":
-            class_names = [os.path.basename(f) for f in glob.glob(os.path.join(entry, "*")) if os.path.isdir(f)]
+            class_names = [os.path.basename(f) for f in glob.glob(
+                os.path.join(entry, "*")) if os.path.isdir(f)]
             # print(class_names)
             for class_name in class_names:
                 self.register_class(class_name, class_dict, "S")
@@ -385,8 +390,8 @@ class AggressiveImageGenerator:
         d.set("random_sharp", 0.1)
         d.set("random_median", 0.1)
         d.set("random_bilateral", 0.1)
-        d.set("random_mosic", 0.1)
-        d.set("mosic_shift_range", 1)
+        d.set("random_mosaic", 0.1)
+        d.set("mosaic_shift_range", 1)
         d.set("random_equalization", 0.1)
         d.set("random_color_reduction", 0.1)
         d.set("random_cos", 0.1)
@@ -423,4 +428,3 @@ class AggressiveImageGenerator:
     @staticmethod
     def set_max_cache_size(size):
         pass
-

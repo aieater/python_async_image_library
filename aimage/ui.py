@@ -93,7 +93,8 @@ if importlib.util.find_spec("acapture"):
         def __init__(self, fd):
             self.rq = multiprocessing.Queue()
             self.wq = multiprocessing.Queue()
-            self.th = multiprocessing.Process(target=self.__other_process__, args=(fd, self.rq, self.wq))
+            self.th = multiprocessing.Process(
+                target=self.__other_process__, args=(fd, self.rq, self.wq))
             self.th.start()
 
         def is_ended(self): return len(self.flist) == 0
@@ -118,7 +119,8 @@ def _cv2_imshow_(mes, image):
     if __front_flag_for_opencv_problem__ == False:
         __front_flag_for_opencv_problem__ = True
         if platform.system() == "Darwin":
-            os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+            os.system(
+                '''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
             cv2.moveWindow("", 0, 0)
 
     return ret
@@ -188,7 +190,8 @@ class _key_observer_:
 
     def __init__(self):
         q = queue.Queue()
-        thread = threading.Thread(target=_key_observer_.__th_observe_key__, args=(q,), daemon=True)
+        thread = threading.Thread(
+            target=_key_observer_.__th_observe_key__, args=(q,), daemon=True)
         thread.start()
         self.q = q
         self.th = thread
