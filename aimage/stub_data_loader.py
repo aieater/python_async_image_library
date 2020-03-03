@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+_dopen = open
+
 from aimage.ui import *
 from aimage.img import *
 from aimage.head import *
@@ -12,7 +14,6 @@ import time
 import sys
 import random
 import os
-_dopen = open
 
 
 # Stub
@@ -35,12 +36,16 @@ class AggressiveImageGenerator:
 
         entry = kwargs["entry"]
         if entry == "/":
+            print("\033[0;31m", entry, "\033[0m")
             raise "Can't specify root path"
         if entry[-1] == '/':
+            print("\033[0;31m", entry, "\033[0m")
             entry = entry[0:-1]
         if entry == ".":
+            print("\033[0;31m", entry, "\033[0m")
             raise "Invalid path"
         if os.path.exists(entry) == False:
+            print("\033[0;31m", entry, "\033[0m")
             raise "Does not exist path"
 
         self.loss = "categorical_crossentropy"
