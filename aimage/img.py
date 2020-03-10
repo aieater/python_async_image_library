@@ -233,11 +233,11 @@ def resize(img, w, h=None, interpolation="fastest"):  # @public
 
 
 def draw_rect(img, s, t, c=(255, 0, 0), line=2):  # @public
-    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), c, line)
+    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), (int(c[0]), int(c[1]), int(c[2])), line)
 
 
 def draw_fill_rect(img, s, t, c=(255, 0, 0)):  # @public
-    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), c, -1)
+    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), (int(c[0]), int(c[1]), int(c[2])), -1)
 
 
 def file_type(d):  # @public
