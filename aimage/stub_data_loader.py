@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 _dopen = open
-
-from aimage.ui import *
-from aimage.img import *
-from aimage.head import *
-import tqdm
-import cv2
-import numpy as np
-import json
-import pathlib
-import glob
-import time
-import sys
-import random
 import os
+import random
+import sys
+import time
+import glob
+import pathlib
+import json
+import numpy as np
+import cv2
+import tqdm
+from easydict import EasyDict as edict
+from aimage.head import *
+from aimage.img import *
+from aimage.ui import *
 
 
 # Stub
@@ -44,7 +44,7 @@ class AggressiveImageGenerator:
         if entry == ".":
             print("\033[0;31m", entry, "\033[0m")
             raise "Invalid path"
-        if os.path.exists(entry) == False:
+        if os.path.exists(entry) is False:
             print("\033[0;31m", entry, "\033[0m")
             raise "Does not exist path"
 
@@ -56,7 +56,7 @@ class AggressiveImageGenerator:
         self.batch_size = 128
         self.label_path = "output.label"
         self.target_size = (256, 256, 3)
-        self.rescale = 1/255.0
+        self.rescale = 1 / 255.0
         self.data_aug_params = {"resize_width": 256, "resize_height": 256}
 
         self.set(**kwargs)
@@ -106,30 +106,34 @@ class AggressiveImageGenerator:
 
     def __iter__(self):
         self.ite = 0
+        if self.pbar:
+            self.pbar.refresh()
+            self.pbar.close()
+            self.pbar = None
         if self.progress_bar:
-            self.pbar = tqdm.tqdm(total=self.length(),
-                                  leave=False, file=sys.stdout)
+            self.pbar = tqdm.tqdm(total=self.length(), leave=True, file=sys.stdout)
         return self
 
     def __next__(self):
         if self.total > self.ite:
             ret = self.get_batch(self.batch_size)
-            dlen = len(ret[0])
+            dlen = len(ret.images)
             if self.pbar:
                 self.pbar.update(dlen)
             self.ite += dlen
-            return [*ret, self.ite]
+            ret.ite = self.ite
+            return ret
         else:
             if self.pbar:
-                self.pbar.close()
                 self.pbar.refresh()
+                self.pbar.close()
                 self.pbar = None
             self.sync_reset()
             raise StopIteration()
 
     def sync_reset(self):
         entry = self.entry
-        if self.datas == None:
+        if self.datas is None:
             self.datas = []
             self.prebatch = None
             class_index_table = {}
@@ -223,19 +227,23 @@ class AggressiveImageGenerator:
         if batch_size is None:
             batch_size = self.batch_size
         block = self.get_data_block(batch_size)
-        ret = [[], [], []]
+        b = edict()
+        b.images = []
+        b.signals = []
+        b.points = None
+        b.file_paths = []
         if block:
             for d in block:
-                ret[0].append(d["image"])
-                ret[1].append(d["signals"])
-                # d["points"])
-
-            ret[0] = np.array(ret[0], dtype=np.float32)
-            ret[1] = np.array(ret[1], dtype=np.float32)
+                b.images.append(d["image"])
+                b.signals.append(d["signals"])
+                b.file_paths.append(d["file_path"])
+                #d["points"])
+            b.images = np.array(b.images, dtype=np.float32)
+            b.signals = np.array(b.signals, dtype=np.float32)
             if self.rescale != 1.0:
-                ret[0] *= self.rescale
+                b.images *= self.rescale
 
-        return ret
+        return b
 
     def get_data_block(self, batch_size):
         if self.total == 0:
@@ -256,6 +264,7 @@ class AggressiveImageGenerator:
                             self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"] = image_path
+                        d["file_path"] = image_path
                         d["image"] = cv2.resize(load_image(
                             image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
 

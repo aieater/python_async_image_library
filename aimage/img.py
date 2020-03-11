@@ -72,9 +72,9 @@ def concat_bhwc_image(ts):
                 pass
         else:
             row = col
-        if i == bsize-1:
+        if i == bsize - 1:
             break
-    return np.array(row*255, dtype=np.uint8)
+    return np.array(row * 255, dtype=np.uint8)
 
 
 def rgb2bgr(img):  # @public
@@ -92,9 +92,9 @@ def draw_image_alpha(img, img_rgba, sx, sy):  # @public
 
 def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
     h, w, c = img.shape
-    cv2.rectangle(img, (0, h), (w, h-20), bg, -1)
+    cv2.rectangle(img, (0, h), (w, h - 20), bg, -1)
     fontScale = 1
-    cv2.putText(img, message, (5, h-4), cv2.FONT_HERSHEY_COMPLEX_SMALL,
+    cv2.putText(img, message, (5, h - 4), cv2.FONT_HERSHEY_COMPLEX_SMALL,
                 fontScale, color, 1, lineType=cv2.LINE_AA)
 
 
@@ -214,9 +214,9 @@ def load(path):  # @public
 def ratio_resize(img, ww, interpolation="fastest"):  # @public
     s = 1
     if img.shape[0] < img.shape[1]:
-        s = ww/img.shape[1]
+        s = ww / img.shape[1]
     else:
-        s = ww/img.shape[0]
+        s = ww / img.shape[0]
     w = int(img.shape[1] * s)
     h = int(img.shape[0] * s)
     return cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
@@ -258,24 +258,24 @@ def generate_colors(C=200):  # @public
     color_table.append((255, 255, 0))
     color_table.append((0, 255, 255))
     color_table.append((255, 0, 0))
-    for c in range(C-len(color_table)):
+    for c in range(C - len(color_table)):
         CD = 0.1
-        TPI = (math.pi*2)/3
+        TPI = (math.pi * 2) / 3
         TT = 1.123
-        d1 = 0.5+math.cos(CD+TPI+TT*c)*0.5
-        d2 = 0.5+math.cos(CD+TPI*2+TT*c)*0.5
-        d3 = 0.5+math.cos(CD+TPI*3+TT*c)*0.5
+        d1 = 0.5 + math.cos(CD + TPI + TT * c) * 0.5
+        d2 = 0.5 + math.cos(CD + TPI * 2 + TT * c) * 0.5
+        d3 = 0.5 + math.cos(CD + TPI * 3 + TT * c) * 0.5
 
         cc = np.array([d3, d2, d1])
 
         TT = 1.371
-        d1 = 0.5+math.cos(CD+TPI+TT*c)*0.5
-        d2 = 0.5+math.cos(CD+TPI*2+TT*c)*0.5
-        d3 = 0.5+math.cos(CD+TPI*3+TT*c)*0.5
+        d1 = 0.5 + math.cos(CD + TPI + TT * c) * 0.5
+        d2 = 0.5 + math.cos(CD + TPI * 2 + TT * c) * 0.5
+        d3 = 0.5 + math.cos(CD + TPI * 3 + TT * c) * 0.5
 
         cc = cc + np.array([d1, d2, d3])
 
-        cc = cc*(1.0-c/C)*255.0
+        cc = cc * (1.0 - c / C) * 255.0
         cc = np.array(cc, dtype=np.uint8)
         color_table.append((int(cc[0]), int(cc[1]), int(cc[2])))
     return color_table
@@ -318,8 +318,8 @@ def draw_box(image, box, color, caption=None):  # @public
     if caption:
         fontScale = 0.5
         t_size = cv2.getTextSize(
-            caption, 0, fontScale, thickness=box_thick//2)[0]
-        c3 = (int(c1[0]+t_size[0]), int(c1[1]-t_size[1] - 3))
+            caption, 0, fontScale, thickness=box_thick // 2)[0]
+        c3 = (int(c1[0] + t_size[0]), int(c1[1] - t_size[1] - 3))
         cv2.rectangle(image, c1, c3, cr, -1)  # filled
         cv2.putText(image, caption, (int(box[0]), int(
-            box[1])-2), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0, 0, 0), box_thick//2, lineType=cv2.LINE_AA)
+            box[1]) - 2), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0, 0, 0), box_thick // 2, lineType=cv2.LINE_AA)

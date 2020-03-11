@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
+_dopen = open
+from aimage.ui import *
+from aimage.img import *
+from aimage.head import *
 import random
 import time
-_dopen = open
-from aimage.head import *
-from aimage.img import *
-from aimage.ui import *
-
 
 
 class AggressiveImageGeneratorForOD:
@@ -141,5 +140,3 @@ class AggressiveImageGeneratorForOD:
     @staticmethod
     def set_max_cache_size(size):
         pass
-
-
