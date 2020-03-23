@@ -87,7 +87,7 @@ def generate(shape, entry):
     dparam["resize_width"] = INPUT_SHAPE[0]
     dparam["resize_height"] = INPUT_SHAPE[1]
     label_path = "output.label"
-    loss = "categorical_crossentropy"
+    loss = "list"
 
     t_generator = aimage.AggressiveImageGenerator(
         entry=entry,

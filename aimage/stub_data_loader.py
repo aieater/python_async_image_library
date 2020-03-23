@@ -25,7 +25,7 @@ class AggressiveImageGenerator:
          - shuffle: True / False # shuffle data
          - entry: <input data path>
          - label_path: <output label path> for resume
-         - loss: "binary_crossentropy" / "categorical_crossentropy" 
+         - loss: "tree" / "list" 
          - target_size: (w,h,c) # shape
          - data_align: True / False # adjust data length for each classes
          - rescale: 1/255.0
@@ -48,7 +48,7 @@ class AggressiveImageGenerator:
             print("\033[0;31m", entry, "\033[0m")
             raise "Does not exist path"
 
-        self.loss = "categorical_crossentropy"
+        self.loss = "list"
         self.verbose = False
         self.progress_bar = True
         self.pbar = None
@@ -90,7 +90,7 @@ class AggressiveImageGenerator:
         self.stub_buffer = []
         self.output_buffer = []
         self.datas = None
-        self.is_tree = self.loss == "binary_crossentropy"
+        self.is_tree = self.loss == "tree"
         self.sync_reset()
 
     def shape(self):
@@ -205,7 +205,7 @@ class AggressiveImageGenerator:
             fp.write(self.label_json)
 
         self.classes = classes
-        if self.loss == "binary_crossentropy":
+        if self.loss == "tree":
             signal_mask = np.zeros((len(classes),))
             tcnt = 0
             for clazz in classes:
@@ -336,7 +336,7 @@ class AggressiveImageGenerator:
             index = self.find_index(class_dict)
             class_dict[class_name] = {"index": index}
 
-    def make_class(self, entry, *, loss="binary_crossentropy", class_dict={}):
+    def make_class(self, entry, *, loss="tree", class_dict={}):
         if self.verbose:
             print("Entrypoint => ", entry)
         class_table_by_index = {}
@@ -344,13 +344,13 @@ class AggressiveImageGenerator:
         elen = len(entry)
         if self.verbose:
             print(loss)
-        if loss == "categorical_crossentropy":
+        if loss == "list":
             class_names = [os.path.basename(f) for f in glob.glob(
                 os.path.join(entry, "*")) if os.path.isdir(f)]
             # print(class_names)
             for class_name in class_names:
                 self.register_class(class_name, class_dict, "S")
-        elif loss == "binary_crossentropy":
+        elif loss == "tree":
             for filename in pathlib.Path(entry).glob('**/'):
                 filename = str(filename)
                 # {}Attributs/{@}Target/{!}Ignore/{?}Unsupervised
