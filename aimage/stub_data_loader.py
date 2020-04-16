@@ -36,17 +36,18 @@ class AggressiveImageGenerator:
 
         entry = kwargs["entry"]
         if entry == "/":
-            print("\033[0;31m", entry, "\033[0m")
-            raise "Can't specify root path"
+            print("\033[0;31m", "Error: Can't use root:", entry, "\033[0m")
+            raise Exception("Can't specify root path")
         if entry[-1] == '/':
             print("\033[0;31m", entry, "\033[0m")
             entry = entry[0:-1]
         if entry == ".":
-            print("\033[0;31m", entry, "\033[0m")
-            raise "Invalid path"
+            print("\033[0;31m", "Error: Current directory:", entry, "\033[0m")
+            raise Exception("Invalid path")
         if os.path.exists(entry) is False:
-            print("\033[0;31m", entry, "\033[0m")
-            raise "Does not exist path"
+            print("\033[0;31m", "Error: Does not exist path:", entry, "\033[0m")
+            raise Exception("Does not exist path")
+
 
         self.loss = "list"
         self.verbose = False
