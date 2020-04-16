@@ -74,7 +74,8 @@ def concat_bhwc_image(ts):
             row = col
         if i == bsize - 1:
             break
-    return np.array(row * 255, dtype=np.uint8)
+    
+    return row #np.array(row * 255, dtype=np.uint8)
 
 
 def rgb2bgr(img):  # @public
