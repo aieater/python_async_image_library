@@ -3,7 +3,7 @@ import sys, os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-version = '1.1.3'
+version = '1.1.4'
 
 install_requires = [
     'mss',
@@ -15,6 +15,7 @@ install_requires = [
     'acapture',
     'twisted',
     'tqdm',
+    'easydict',
     'service_identity',
 ]
 
