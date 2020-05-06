@@ -285,7 +285,7 @@ def generate_colors(C=200):  # @public
 COLOR_TABLE = generate_colors(1024)  # public
 
 
-def draw_box(image, box, color, caption=None):  # @public
+def draw_box(image, box, color, caption=None, fontScale=0.5):  # @public
     if type(box) == np.ndarray:
         if len(box.shape) == 1 and len(box) == 4:
             pass
@@ -317,7 +317,6 @@ def draw_box(image, box, color, caption=None):  # @public
     cr = (int(color[0]), int(color[1]), int(color[2]))
     cv2.rectangle(image, c1, c2, cr, box_thick)
     if caption:
-        fontScale = 0.5
         t_size = cv2.getTextSize(
             caption, 0, fontScale, thickness=box_thick // 2)[0]
         c3 = (int(c1[0] + t_size[0]), int(c1[1] - t_size[1] - 3))
