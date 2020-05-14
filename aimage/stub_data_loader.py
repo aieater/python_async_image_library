@@ -202,6 +202,10 @@ class AggressiveImageGenerator:
         classes = self.make_class(
             entry=self.entry, loss=self.loss, class_dict=j)
         self.label_json = json.dumps(classes)
+
+        if os.path.exists(os.path.dirname(self.label_path)) is False:
+            os.makedirs(os.path.dirname(self.label_path), exist_ok=True)
+
         with _dopen(self.label_path, "w") as fp:
             fp.write(self.label_json)
 
