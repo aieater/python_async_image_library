@@ -247,8 +247,12 @@ def file_type(d):  # @public
 
 
 def image_head(d):  # @public
-    print("image_head: Does not support API.")
-    return None
+    img = cv2.imread(d)
+    info = {}
+    info["height"] = img.shape[0]
+    info["width"] = img.shape[1]
+    info["channel"] = img.shape[2]
+    return info
 
 
 def generate_colors(C=200):  # @public
