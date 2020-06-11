@@ -25,14 +25,14 @@ INPUT_SHAPE = (64, 64, 3)
 LATENT_DIM = 2
 
 
-def make_path(s): return os.path.join(os.path.dirname(os.path.abspath(__file__)), DATASET_NAME, s)
+def make_path(s):
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), DATASET_NAME, s)
 
 
 embedding_path = make_path("embedding.npy")
 x_vectors_path = make_path("x_vectors.npy")
 y_vectors_path = make_path("y_vectors.npy")
 file_paths_path = make_path("file_paths.json")
-
 
 if use_cache and os.path.exists(embedding_path) and os.path.exists(x_vectors_path) and os.path.exists(y_vectors_path) and os.path.exists(file_paths_path):
     embedding = np.load(embedding_path)

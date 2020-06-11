@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 _dopen = open
+import glob
+import json
 import os
+import pathlib
 import random
 import sys
 import time
-import glob
-import pathlib
-import json
-import numpy as np
+
 import cv2
+import numpy as np
 import tqdm
-from easydict import EasyDict as edict
 from aimage.head import *
 from aimage.img import *
 from aimage.ui import *
+from easydict import EasyDict as edict
 
 
 # Stub
@@ -47,7 +48,6 @@ class AggressiveImageGenerator:
         if os.path.exists(entry) is False:
             print("\033[0;31m", "Error: Does not exist path:", entry, "\033[0m")
             raise Exception("Does not exist path")
-
 
         self.loss = "list"
         self.verbose = False
@@ -83,6 +83,7 @@ class AggressiveImageGenerator:
         def setd(k, v):
             if k not in data_aug_params:
                 data_aug_params[k] = v
+
         setd("resize_interpolation", "fastest")
         for k in data_aug_params:
             data_aug_params[k] = str(data_aug_params[k])
@@ -141,8 +142,7 @@ class AggressiveImageGenerator:
             table = {}
             for clazz in self.classes:
                 c = self.classes[clazz]
-                class_index_table[c["index"]] = {
-                    "name": clazz, "results": [], "total": 0}
+                class_index_table[c["index"]] = {"name": clazz, "results": [], "total": 0}
             for filename in pathlib.Path(entry).glob('**/*.jpg'):
                 filename = str(filename)
                 self.datas.append(filename)
@@ -181,8 +181,7 @@ class AggressiveImageGenerator:
                 new_datas += v
             if self.data_align:
                 if self.verbose:
-                    print("Total", len(self.datas), "=>", vmax,
-                          "x", len(table), "=>", len(new_datas))
+                    print("Total", len(self.datas), "=>", vmax, "x", len(table), "=>", len(new_datas))
                 self.datas = new_datas
                 for i in class_index_table:
                     class_index_table[i]["total"] = vmax
@@ -199,8 +198,7 @@ class AggressiveImageGenerator:
             j = json.loads(_dopen(self.label_path).read())
         except:
             pass
-        classes = self.make_class(
-            entry=self.entry, loss=self.loss, class_dict=j)
+        classes = self.make_class(entry=self.entry, loss=self.loss, class_dict=j)
         self.label_json = json.dumps(classes)
 
         if os.path.exists(os.path.dirname(self.label_path)) is False:
@@ -211,7 +209,7 @@ class AggressiveImageGenerator:
 
         self.classes = classes
         if self.loss == "tree":
-            signal_mask = np.zeros((len(classes),))
+            signal_mask = np.zeros((len(classes), ))
             tcnt = 0
             for clazz in classes:
                 i = classes[clazz]["index"]
@@ -222,7 +220,7 @@ class AggressiveImageGenerator:
                 raise "Two or more target directories are required. Use @ to define it."
             self.signal_mask = signal_mask
         else:
-            self.signal_mask = np.ones((len(classes),))
+            self.signal_mask = np.ones((len(classes), ))
         return classes
 
     def get_classes(self):
@@ -257,36 +255,33 @@ class AggressiveImageGenerator:
         while True:
             if self.q < 1024:
                 if self.iindex < self.total:
-                    ds = self.datas[self.iindex: self.iindex +
-                                    self.STREAM_BATCH]
+                    ds = self.datas[self.iindex:self.iindex + self.STREAM_BATCH]
                     dlen = len(ds)
                     self.q += dlen
                     stream = list()
                     # input   = dict()
                     # input["data_aug_params"] = self.data_aug_params
                     for image_path in ds:
-                        signals = self.make_signal(
-                            self.entry, image_path, self.classes)
+                        signals = self.make_signal(self.entry, image_path, self.classes)
                         d = dict()
                         d["image_path"] = image_path
                         d["file_path"] = image_path
-                        d["image"] = cv2.resize(load_image(
-                            image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
+                        d["image"] = cv2.resize(load_image(image_path), (self.target_size[0], self.target_size[1]), interpolation=cv2.INTER_AREA)
 
-# data_aug_params
-# {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
-#     'target_size': (224, 224, 3), 'data_align': True, 'rescale': 0.00392156862745098, 'shuffle': True, 'data_aug_params': {'resize_width': 224, 'resize_height': 224}}
+                        # data_aug_params
+                        # {'entry': 'data/fruit/train', 'label_path': 'weights/fruit.mobilenet.categorical_crossentropy.label', 'loss': 'categorical_crossentropy',
+                        #     'target_size': (224, 224, 3), 'data_align': True, 'rescale': 0.00392156862745098, 'shuffle': True, 'data_aug_params': {'resize_width': 224, 'resize_height': 224}}
 
                         d["signals"] = np.array(signals, dtype=np.float32)
                         d["points_table"] = None
                         stream.append(d)
                     # input["stream"] = stream
-                        # //    {
-                        # //      params:{
-                        # //          data_aug_params:{}
-                        # //      },
-                        # //      stream: [{image_path:"",signals:[],points_table:[]},{},{},{},]
-                        # //    }
+                    # //    {
+                    # //      params:{
+                    # //          data_aug_params:{}
+                    # //      },
+                    # //      stream: [{image_path:"",signals:[],points_table:[]},{},{},{},]
+                    # //    }
                     self.stub_buffer += stream
                     # native_module.async_image_loader_with_data_aug_input(str(hex(id(self))),input)
                     self.iindex += dlen
@@ -330,7 +325,7 @@ class AggressiveImageGenerator:
 
     def make_signal(self, entry, fpath, classes):
         sp = str(fpath)[len(entry):].split("/")
-        signal = np.zeros((len(classes),), dtype=np.float32)
+        signal = np.zeros((len(classes), ), dtype=np.float32)
         for s in sp:
             if s in classes:
                 signal[classes[s]["index"]] = 1
@@ -350,8 +345,7 @@ class AggressiveImageGenerator:
         if self.verbose:
             print(loss)
         if loss == "list":
-            class_names = [os.path.basename(f) for f in glob.glob(
-                os.path.join(entry, "*")) if os.path.isdir(f)]
+            class_names = [os.path.basename(f) for f in glob.glob(os.path.join(entry, "*")) if os.path.isdir(f)]
             # print(class_names)
             for class_name in class_names:
                 self.register_class(class_name, class_dict, "S")
@@ -402,8 +396,12 @@ class AggressiveImageGenerator:
     @staticmethod
     def make_full_aug_params():
         class Dict:
-            def __init__(self): self.d = dict()
-            def set(self, k, v): self.d[k] = str(v)
+            def __init__(self):
+                self.d = dict()
+
+            def set(self, k, v):
+                self.d[k] = str(v)
+
         d = Dict()
         d.set("random_gaussian", 0.1)
         d.set("random_sharp", 0.1)

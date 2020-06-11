@@ -3,10 +3,8 @@
 import math
 import mimetypes
 
-
 import numpy as np
 import cv2
-
 
 CRED = '\033[0;31m'
 CCYAN = '\033[0;36m'
@@ -74,8 +72,8 @@ def concat_bhwc_image(ts):
             row = col
         if i == bsize - 1:
             break
-    
-    return row #np.array(row * 255, dtype=np.uint8)
+
+    return row  #np.array(row * 255, dtype=np.uint8)
 
 
 def rgb2bgr(img):  # @public
@@ -95,21 +93,18 @@ def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
     h, w, c = img.shape
     cv2.rectangle(img, (0, h), (w, h - 20), bg, -1)
     fontScale = 1
-    cv2.putText(img, message, (5, h - 4), cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                fontScale, color, 1, lineType=cv2.LINE_AA)
+    cv2.putText(img, message, (5, h - 4), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
 
 
 def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
     h, w, c = img.shape
     cv2.rectangle(img, (0, 0), (w, 20), bg, -1)
     fontScale = 1
-    cv2.putText(img, message, (5, 17), cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                fontScale, color, 1, lineType=cv2.LINE_AA)
+    cv2.putText(img, message, (5, 17), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
 
 
 def draw_text(img, message, x=5, y=17, color=(255, 200, 55), fontScale=1):  # @public
-    cv2.putText(img, message, (x, y), cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                fontScale, color, 1, lineType=cv2.LINE_AA)
+    cv2.putText(img, message, (x, y), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
 
 
 def is_image_ext(f):  # @public
@@ -140,8 +135,7 @@ def opencv_encoder(data, **kargs):
     if "quality" in kargs:
         quality = kargs["quality"]
     data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
-    check, data = cv2.imencode(
-        ".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
+    check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check == False:
         raise "Invalid image data"
     return data
@@ -172,8 +166,7 @@ def _opencv_encoder_(data, **kargs):
     if "quality" in kargs:
         quality = kargs["quality"]
     data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
-    check, data = cv2.imencode(
-        ".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
+    check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check == False:
         raise "Invalid image data"
     return data
@@ -203,12 +196,10 @@ def load(path):  # @public
     if t == "image":
         img = cv2.imread(path, 3)
         if img is None:
-            print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" %
-                  (path,), CRESET)
+            print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
             raise "Invalid file or invalid path."
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" %
-          (path,), CRESET)
+    print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
     return None
 
 
@@ -299,14 +290,12 @@ def draw_box(image, box, color, caption=None, fontScale=0.5):  # @public
             raise "Invalid shape."
     elif type(box) == list:
         if len(box) == 2:
-            box = np.array([box[0][0], box[0][1], box[1]
-                            [0], box[1][1]], np.int32)
+            box = np.array([box[0][0], box[0][1], box[1][0], box[1][1]], np.int32)
         else:
             box = np.array([box[0], box[1], box[2], box[3]], np.int32)
     elif type(box) == tuple:
         if len(box) == 2:
-            box = np.array([box[0][0], box[0][1], box[1]
-                            [0], box[1][1]], np.int32)
+            box = np.array([box[0][0], box[0][1], box[1][0], box[1][1]], np.int32)
         else:
             box = np.array([box[0], box[1], box[2], box[3]], np.int32)
     else:
@@ -321,9 +310,7 @@ def draw_box(image, box, color, caption=None, fontScale=0.5):  # @public
     cr = (int(color[0]), int(color[1]), int(color[2]))
     cv2.rectangle(image, c1, c2, cr, box_thick)
     if caption:
-        t_size = cv2.getTextSize(
-            caption, 0, fontScale, thickness=box_thick // 2)[0]
+        t_size = cv2.getTextSize(caption, 0, fontScale, thickness=box_thick // 2)[0]
         c3 = (int(c1[0] + t_size[0]), int(c1[1] - t_size[1] - 3))
         cv2.rectangle(image, c1, c3, cr, -1)  # filled
-        cv2.putText(image, caption, (int(box[0]), int(
-            box[1]) - 2), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0, 0, 0), box_thick // 2, lineType=cv2.LINE_AA)
+        cv2.putText(image, caption, (int(box[0]), int(box[1]) - 2), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0, 0, 0), box_thick // 2, lineType=cv2.LINE_AA)

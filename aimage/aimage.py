@@ -6,7 +6,6 @@ from aimage.ui import *
 from aimage.stub_data_loader_od import *
 from aimage.stub_data_loader import *
 
-
 try:
     from aimage_native import *
     print('\033[0;36m' + "========================================================" + '\033[0m')
@@ -27,7 +26,6 @@ except:
     print('\033[0;31m' + "Using unoptimized aimage library." + '\033[0m')
     print()
     pass
-
 
 if __name__ == "__main__":
 

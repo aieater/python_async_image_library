@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
+import contextlib
+import glob
+import importlib
+import multiprocessing
 import os
 import platform
 import sys
-import time
-import glob
-import multiprocessing
+import termios
 import threading
-import importlib
+import time
+
+import cv2
+import numpy as np
+
 try:
     import queue
 except ImportError:
     import Queue as queue
-import numpy as np
-import cv2
-import termios
-import contextlib
 
 
 def _ipython_imshow_(image):
@@ -76,7 +78,7 @@ if importlib.util.find_spec("acapture"):
             fpath = os.path.expanduser(fd)
             if fpath[-1] != os.sep:
                 fpath += os.sep
-            fpath += "**"+os.sep+"*"
+            fpath += "**" + os.sep + "*"
             files = glob.glob(fpath, recursive=True)
             for f in files:
                 filename, ext = os.path.splitext(f)
@@ -93,20 +95,24 @@ if importlib.util.find_spec("acapture"):
         def __init__(self, fd):
             self.rq = multiprocessing.Queue()
             self.wq = multiprocessing.Queue()
-            self.th = multiprocessing.Process(
-                target=self.__other_process__, args=(fd, self.rq, self.wq))
+            self.th = multiprocessing.Process(target=self.__other_process__, args=(fd, self.rq, self.wq))
             self.th.start()
 
-        def is_ended(self): return len(self.flist) == 0
-        def destroy(self): pass
-        def read(self): self.rq.get()
+        def is_ended(self):
+            return len(self.flist) == 0
+
+        def destroy(self):
+            pass
+
+        def read(self):
+            self.rq.get()
+
     acapture.DirImgFileStub = AsyncFastJpegCapture
     # acapture.DirImgFileStub = FastJpegCapture
 
     open = acapture.open  # @public
 else:
     print("pip3 install pygame acapture")
-
 
 __front_flag_for_opencv_problem__ = False
 
@@ -119,8 +125,7 @@ def _cv2_imshow_(mes, image):
     if __front_flag_for_opencv_problem__ == False:
         __front_flag_for_opencv_problem__ = True
         if platform.system() == "Darwin":
-            os.system(
-                '''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+            os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
             cv2.moveWindow("", 0, 0)
 
     return ret
@@ -130,13 +135,13 @@ def is_notebook():  # @public
     try:
         shell = get_ipython().__class__.__name__
         if shell == "ZMQInteractiveShell":
-            return True   # Jupyter notebook or qtconsole
+            return True  # Jupyter notebook or qtconsole
         elif shell == "TerminalInteractiveShell":
             return False  # Terminal running IPython
         else:
             return False  # Other type (?)
     except NameError:
-        return False      # Probably standard Python interpreter
+        return False  # Probably standard Python interpreter
 
 
 def show(image, console=False):  # @public
@@ -190,8 +195,7 @@ class _key_observer_:
 
     def __init__(self):
         q = queue.Queue()
-        thread = threading.Thread(
-            target=_key_observer_.__th_observe_key__, args=(q,), daemon=True)
+        thread = threading.Thread(target=_key_observer_.__th_observe_key__, args=(q, ), daemon=True)
         thread.start()
         self.q = q
         self.th = thread

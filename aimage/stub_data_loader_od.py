@@ -27,7 +27,7 @@ class AggressiveImageGeneratorForOD:
         while True:
             if self.q < 1024:
                 if self.iindex < self.total:
-                    ds = self.datas[self.iindex: self.iindex + self.STREAM_BATCH]
+                    ds = self.datas[self.iindex:self.iindex + self.STREAM_BATCH]
                     dlen = len(ds)
                     self.q += dlen
                     stream = list()
@@ -40,12 +40,12 @@ class AggressiveImageGeneratorForOD:
                         dd["points_table"] = d["bounding_box_table"]
                         stream.append(dd)
                     #input["stream"] = stream
-                        # //    {
-                        # //      params:{
-                        # //          data_aug_params:{}
-                        # //      },
-                        # //      stream: [{image_path:"",signals:[],points_table:[]},{},{},{},]
-                        # //    }
+                    # //    {
+                    # //      params:{
+                    # //          data_aug_params:{}
+                    # //      },
+                    # //      stream: [{image_path:"",signals:[],points_table:[]},{},{},{},]
+                    # //    }
                     # native_module.async_image_loader_with_data_aug_input(str(hex(id(self))),input)
                     self.stub_buffer += stream
                     #self.stub_buffer += [input]
@@ -91,8 +91,12 @@ class AggressiveImageGeneratorForOD:
     @staticmethod
     def make_full_aug_params():
         class Dict:
-            def __init__(self): self.d = dict()
-            def set(self, k, v): self.d[k] = str(v)
+            def __init__(self):
+                self.d = dict()
+
+            def set(self, k, v):
+                self.d[k] = str(v)
+
         d = Dict()
         FD = False
         if True:
