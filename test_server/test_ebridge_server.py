@@ -128,4 +128,6 @@ def data2data():
 
 
 if __name__ == "__main__":
-    echo()
+    # echo()
+    data2data()
+

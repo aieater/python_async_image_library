@@ -52,12 +52,14 @@ def echo():
         else:
             time.sleep(0.001)
 
+
 def data2data():
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
             s.add_input_protocol(protocol.LengthSplitIn())
             s.add_output_protocol(protocol.LengthSplitOut())
+
         def on_disconnected(self):
             pass
 
@@ -84,9 +86,8 @@ def data2data():
                     #     aimage.show(img)
         else:
             time.sleep(0.1)
-        
 
 
 if __name__ == "__main__":
-    #data2data()
-    echo()
+    data2data()
+    # echo()

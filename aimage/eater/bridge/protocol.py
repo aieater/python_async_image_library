@@ -89,6 +89,7 @@ class LengthSplitIn:  # Stream(socket) to Blocks
 
     # stream to blocks
     def write(self, data):
+        print("LengthSplitIn:write:I", data)
         slen = len(data)
         blen = self.buffer.length()
         check_type(data, "W:LengthSplitIn")
@@ -98,14 +99,17 @@ class LengthSplitIn:  # Stream(socket) to Blocks
         self.buffer.write(data)
         buf = self.buffer.getbuffer()
         # More than header size
-        if len(buf) >= 4:
+        while len(buf) >= 4:
             body_length = struct.unpack_from(">I", buf[0:4])[0]
             # Has contents
             if len(buf) >= 4 + body_length:
                 head = self.buffer.read(4)
                 body = self.buffer.read(body_length)
-                print("LengthSplitIn:write:", body)
+                print("LengthSplitIn:write:R", body)
                 self.blocks.append(body)
+                buf = self.buffer.getbuffer()
+            else:
+                break
         return slen
 
     # blocks (extracted)

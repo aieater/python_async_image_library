@@ -10,15 +10,15 @@ from ..bridge import protocol as bp
 
 
 def success(*args, **kwargs):
-    print('\033[0;32m', *args, '\033[0m', **kwargs)
+    print('\033[0;32m', *args, '\033[0m', flush=True, **kwargs)
 
 
 def warn(*args, **kwargs):
-    print('\033[0;31m', *args, '\033[0m', **kwargs)
+    print('\033[0;31m', *args, '\033[0m', flush=True, **kwargs)
 
 
 def info(*args, **kwargs):
-    print('\033[0;36m', *args, '\033[0m', **kwargs)
+    print('\033[0;36m', *args, '\033[0m', flush=True, **kwargs)
 
 
 
@@ -65,10 +65,10 @@ class StackedServerSocketProtocol(protocol.Protocol):
         #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
+        info("TCP:READ:", data)
         self.bandwidth_inbound += len(data)
         if self.is_available:
             self.input_middlewares[0].write(data)
-        info("TCP:READ:", data)
 
     def update(self):
         has_event = 0

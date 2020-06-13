@@ -12,15 +12,15 @@ from ..bridge import protocol as bp
 
 
 def success(*args, **kwargs):
-    print('\033[0;32m', *args, '\033[0m', **kwargs)
+    print('\033[0;32m', *args, '\033[0m', flush=True, **kwargs)
 
 
 def warn(*args, **kwargs):
-    print('\033[0;31m', *args, '\033[0m', **kwargs)
+    print('\033[0;31m', *args, '\033[0m', flush=True, **kwargs)
 
 
 def info(*args, **kwargs):
-    print('\033[0;36m', *args, '\033[0m', **kwargs)
+    print('\033[0;36m', *args, '\033[0m', flush=True, **kwargs)
 
 
 def estimate_retry_delay_time(r, max_delay=20):
