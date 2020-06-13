@@ -1,53 +1,6 @@
 #!/usr/bin/env python3
-from __future__ import print_function
-import os
-
-
-def to_bool(s):
-    return s in [1, 'True', 'TRUE', 'true', '1', 'yes', 'Yes', 'Y', 'y', 't', 'on']
-
-
-import inspect
-DEBUG = False
-if "DEBUG" in os.environ:
-    DEBUG = to_bool(os.environ["DEBUG"])
-    if DEBUG:
-        try:
-            import __builtin__
-        except ImportError:
-            import builtins as __builtin__
-        import inspect
-
-        def lpad(s, c):
-            return s[0:c].ljust(c)
-
-        def rpad(s, c):
-            if len(s) > c: return s[len(s) - c:]
-            else: return s.rjust(c)
-
-        def print(*args, **kwargs):
-            s = inspect.stack()
-            __builtin__.print("\033[44m%s@%s(%s):\033[0m " % (rpad(s[1][1], 20), lpad(str(s[1][3]), 10), rpad(str(s[1][2]), 4)), end="")
-            return __builtin__.print(*args, **kwargs)
-
-
-def _pre_():
-    print("\033[A                                                                \033[A", flush=True)
-
-
-from twisted.internet import reactor, protocol, endpoints
-from twisted.protocols import basic
-import traceback
-import uuid
-import cv2
-import threading
-import queue
-import time
-import struct
 import numpy as np
-import signal
-import math
-from io import BytesIO
+import struct
 
 DEBUG = False
 
@@ -62,8 +15,10 @@ def to_bytes(d):
         return bytearray(d)
     if isinstance(d, bytearray):
         return d
-    if isinstance(d, bytearray):
-        return d
+    if isinstance(d, str):
+        return d.encode('utf-8')
+    if isinstance(d, list):
+        return bytearray(d)
     if type(d).__module__ == np.__name__:
         return bytearray(d)
     return False
@@ -74,12 +29,14 @@ class StreamIO:
         self.b = bytearray()
 
     def read(self, size=-1):
-        b = self.b
+        _b = self.b
         if size == -1:
+            # Return all
             self.b = bytearray()
-            return b
-        bb = b[0:size]
-        self.b = b[size:]
+            return _b
+        # Return sliced buffer
+        bb = _b[0:size]
+        self.b = _b[size:]
         return bb
 
     def getbuffer(self):
@@ -101,9 +58,13 @@ class StreamIO:
     def size(self):
         return len(self.b)
 
+    def length(self):
+        return len(self.b)
+
 
 class DirectStream:
     def __init__(self):
+        self.queue_name = None
         self.buffer = StreamIO()
 
     def write(self, data):
@@ -120,36 +81,42 @@ class DirectStream:
 
 
 class LengthSplitIn:  # Stream(socket) to Blocks
-    def __init__(self):
+    def __init__(self, max_buffer_size=1024 * 1024 * 10):
+        self.queue_name = None
         self.buffer = StreamIO()
         self.blocks = []
+        self.max_buffer_size = max_buffer_size
 
     # stream to blocks
     def write(self, data):
         slen = len(data)
+        blen = self.buffer.length()
         check_type(data, "W:LengthSplitIn")
+        if slen + blen > self.max_buffer_size:
+            print("LengthSplitIn:write", "Data size:", slen, "Buffer size:", blen)
+            raise Exception("too much data size")
         self.buffer.write(data)
         buf = self.buffer.getbuffer()
+        # More than header size
         if len(buf) >= 4:
-            slen = struct.unpack_from(">I", buf[0:4])[0]
-            if slen > 1024 * 1024 * 10:  #2MB
-                print(slen)
-                raise "too much data size"
-            if len(buf) >= 4 + slen:
-                dummy = self.buffer.read(4)
-                content = self.buffer.read(slen)
-                self.blocks.append(content)
+            body_length = struct.unpack_from(">I", buf[0:4])[0]
+            # Has contents
+            if len(buf) >= 4 + body_length:
+                head = self.buffer.read(4)
+                body = self.buffer.read(body_length)
+                print("LengthSplitIn:write:", body)
+                self.blocks.append(body)
         return slen
 
     # blocks (extracted)
     def read(self, size=-1):
         if size == -1:
-            blocks = self.blocks
+            _blocks = self.blocks
             self.blocks = []
-            return blocks
-        blocks = self.blocks[0:size]
+            return _blocks
+        _blocks = self.blocks[0:size]
         self.blocks = self.blocks[size:]
-        return blocks
+        return _blocks
 
     def update(self):
         pass
@@ -159,21 +126,29 @@ class LengthSplitIn:  # Stream(socket) to Blocks
 
 
 class LengthSplitOut:  # Block(s) to Stream(socket)
-    def __init__(self):
+    def __init__(self, max_buffer_size=1024 * 1024 * 10):
+        self.queue_name = None
         self.buffer = StreamIO()
+        self.max_buffer_size = max_buffer_size
 
     # single data block to stream
     def write(self, blocks):
         check_type(blocks, "W:LengthSplitOut")
+
         tlen = 0
+        blen = self.buffer.length()
         for data in blocks:
-            if isinstance(data, tuple):
-                print(data)
+            tlen += len(data)
+        if tlen + blen > self.max_buffer_size:
+            print("LengthSplitOut:write", "Data size:", tlen, "Buffer size:", blen)
+            raise Exception("too much data size")
+
+        for data in blocks:
             slen = len(data)
             blen = slen.to_bytes(4, 'big')
             self.buffer.write(blen)
             self.buffer.write(data)
-            tlen += slen
+
         return tlen
 
     # stream (to socket)
@@ -242,6 +217,7 @@ class ImageDecoder:  # Blocks to Blocks
 
     def info(self):
         return "ImageDecoder: Image data block <[<bytes>,]> => <[<ndarray>,]>"
+
 
 class ImageEncoder:  # Blocks to Blocks
     def __init__(self, *, queue_name="default", quality=90):

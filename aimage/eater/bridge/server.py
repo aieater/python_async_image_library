@@ -1,60 +1,30 @@
 #!/usr/bin/env python3
-from __future__ import print_function
-import os
-
-
-def to_bool(s):
-    return s in [1, 'True', 'TRUE', 'true', '1', 'yes', 'Yes', 'Y', 'y', 't', 'on']
-
-
-import inspect
-DEBUG = False
-if "DEBUG" in os.environ:
-    DEBUG = to_bool(os.environ["DEBUG"])
-    if DEBUG:
-        try:
-            import __builtin__
-        except ImportError:
-            import builtins as __builtin__
-        import inspect
-
-        def lpad(s, c):
-            return s[0:c].ljust(c)
-
-        def rpad(s, c):
-            if len(s) > c: return s[len(s) - c:]
-            else: return s.rjust(c)
-
-        def print(*args, **kwargs):
-            s = inspect.stack()
-            __builtin__.print("\033[44m%s@%s(%s):\033[0m " % (rpad(s[1][1], 20), lpad(str(s[1][3]), 10), rpad(str(s[1][2]), 4)), end="")
-            return __builtin__.print(*args, **kwargs)
-
-
-def _pre_():
-    print("\033[A                                                                \033[A", flush=True)
-
-
-from twisted.internet import reactor, protocol, endpoints
-from twisted.protocols import basic
-from twisted.internet import ssl, reactor
-
-import traceback
-import uuid
-import cv2
-import threading
+import datetime
 import multiprocessing
 import time
-import struct
+import uuid
 import numpy as np
-import signal
-import math
-from ..bridge.protocol import StreamIO
+from twisted.internet import endpoints, protocol, reactor, ssl
+
 from ..bridge import protocol as bp
+
+
+def success(*args, **kwargs):
+    print('\033[0;32m', *args, '\033[0m', **kwargs)
+
+
+def warn(*args, **kwargs):
+    print('\033[0;31m', *args, '\033[0m', **kwargs)
+
+
+def info(*args, **kwargs):
+    print('\033[0;36m', *args, '\033[0m', **kwargs)
+
 
 
 class StackedServerSocketProtocol(protocol.Protocol):
     def __init__(self, factory, addr):
+        super().__init__()
         self.addr = addr
         self.factory = factory
         self.input_middlewares = []
@@ -69,6 +39,15 @@ class StackedServerSocketProtocol(protocol.Protocol):
         self.total_inbound = 0
         self.total_outbound = 0
         self.queue_name = "default"
+        self.description = ""
+
+    def add_input_protocol(self, p):
+        p.queue_name = self.queue_name
+        self.input_middlewares.append(p)
+
+    def add_output_protocol(self, p):
+        p.queue_name = self.queue_name
+        self.output_middlewares.append(p)
 
     def connectionMade(self):
         import aimage
@@ -76,28 +55,33 @@ class StackedServerSocketProtocol(protocol.Protocol):
         self.is_available = True
         self.uuid = str(uuid.uuid4())
         self.factory.clients[self.uuid] = self
-        print("C:" + str(self.addr))
+        #print("C:" + str(self.addr))
 
     def connectionLost(self, reason):
         import aimage
         aimage.delete_queue(self.queue_name)
         self.is_available = False
         del self.factory.clients[self.uuid]
-        print("D:" + str(self.addr) + str(reason))
+        #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
         self.bandwidth_inbound += len(data)
         if self.is_available:
             self.input_middlewares[0].write(data)
+        info("TCP:READ:", data)
 
     def update(self):
         if time.time() - self.tm > 1.0:
             if len(self.in_ave_q) > 3:
                 self.in_ave_q.pop(0)
                 self.out_ave_q.pop(0)
+            self.total_inbound += self.bandwidth_inbound
+            self.total_outbound += self.bandwidth_outbound
             self.in_ave_q.append(self.bandwidth_inbound)
             self.out_ave_q.append(self.bandwidth_outbound)
-            print("%.2fMB/s, %.2fMB/s (I/O)" % ((np.mean(self.in_ave_q) / 1024 / 1024), (np.mean(self.out_ave_q) / 1024 / 1024)))
+            t = datetime.datetime.now()
+            ts = f'{t.year}/{t.month}/{t.day} {str(t.hour).zfill(2)}:{str(t.minute).zfill(2)}:{str(t.second).zfill(2)}'
+            self.description = "%s://%s:%s %s : I:%.2fMB/s, O:%.2fMB/s TI:%.2fMB, TO:%.2fMB" % (self.addr.type, self.addr.host, self.addr.port, ts, (np.mean(self.in_ave_q) / 1024 / 1024), (np.mean(self.out_ave_q) / 1024 / 1024), self.total_inbound / 1024 / 1024, self.total_outbound / 1024 / 1024)
             self.tm = time.time()
             self.bandwidth_inbound = 0
             self.bandwidth_outbound = 0
@@ -122,11 +106,13 @@ class StackedServerSocketProtocol(protocol.Protocol):
             if len(buf) > 0:
                 self.bandwidth_outbound += len(buf)
                 self.transport.write(buf)
-        except:
-            traceback.print_exc()
+                info("TCP:WRITE:", buf)
+        except Exception as e:
+            warn(e)
             try:
                 self.transport.close()
-            except:
+            except Exception as e:
+                warn(e)
                 pass
 
     def read(self, size=-1):
@@ -153,19 +139,19 @@ class ObjectTable:
 
 class StreamFactory(protocol.Factory):
     def __init__(self, **kargs):
-        self.quality = kargs["quality"]
+        super().__init__()
         self.clients = {}
+        self.log_tm = 0
         self.update()
+
+    def build_protocol_stack(self, s):
+        s.input_middlewares.append(bp.DirectStream())
+        s.output_middlewares.append(bp.DirectStream())
 
     def buildProtocol(self, addr):
         s = StackedServerSocketProtocol(self, addr)
         s.queue_name = str(uuid.uuid4())
-        s.input_middlewares.append(bp.LengthSplitIn())
-        s.input_middlewares.append(bp.ImageDecoder(queue_name=s.queue_name, ))
-        s.output_middlewares.append(bp.ImageEncoder(queue_name=s.queue_name, quality=self.quality))
-        s.output_middlewares.append(bp.LengthSplitOut())
-        # s.input_middlewares.append(bp.DirectStream())
-        # s.output_middlewares.append(bp.DirectStream())
+        self.build_protocol_stack(s)
         return s
 
     def getDataBlocksAsArray(self, size=-1):
@@ -190,6 +176,12 @@ class StreamFactory(protocol.Factory):
         for k in self.clients:
             client_socket = self.clients[k]
             client_socket.update()
+        t = time.time()
+        if t - self.log_tm > 1.0:
+            self.log_tm = t
+            for k in self.clients:
+                print(self.clients[k].description)
+                print("\033[2A", flush=True)
         reactor.callLater(0.001, self.update)
 
 
@@ -218,20 +210,20 @@ def pack_array_datablock(socket_mapper, modified_data):
 class EaterBridgeServer(object):
     def getDataBlocksAsArray(self, size=-1):
         try:
-            if self.input_queue.empty() == False:
+            if self.input_queue.empty() is False:
                 obj = self.input_queue.get_nowait()
                 return obj
-        except:
-            traceback.print_exc()
+        except Exception as e:
+            warn(e)
             pass
         return []
 
     def setDataBlocksFromArray(self, a):
         try:
-            if self.output_queue.full() == False:
+            if self.output_queue.full() is False:
                 self.output_queue.put_nowait(a)
-        except:
-            traceback.print_exc()
+        except Exception as e:
+            warn(e)
             return False
         return True
 
@@ -247,19 +239,19 @@ class EaterBridgeServer(object):
         self.signal_queue_w = multiprocessing.Queue()
 
         if "port" not in kargs:
-            print("Required parameter: port was None")
+            raise Exception("Required parameter: port was None")
         if "host" not in kargs:
-            print("Required parameter: host was None")
+            raise Exception("Required parameter: host was None")
 
-        print("Start server", "tcp:" + str(kargs["port"]))
+        info("Start server", "tcp:" + str(kargs["port"]))
         parameter_block = []
         protocol = "tcp"
         if "ssl" in kargs and kargs["ssl"]:
             protocol = "ssl"
             if "key" not in kargs:
-                print("Required parameter: port was None")
+                raise Exception("Required parameter: key was None")
             if "crt" not in kargs:
-                print("Required parameter: crt was None")
+                raise Exception("Required parameter: crt was None")
             parameter_block.append("privateKey=" + kargs["key"])
             parameter_block.append("certKey=" + kargs["crt"])
         parameter_block.append(protocol)
@@ -267,9 +259,12 @@ class EaterBridgeServer(object):
         if len(kargs["host"]):
             parameter_block.append("interface=" + kargs["host"].replace(":", "\\:"))
 
-        self.factory = StreamFactory(**kargs)
+        if "protocol_stack" in kargs:
+            self.factory = kargs["protocol_stack"]()
+        else:
+            raise Exception("protocol_stack is required.")
         parameter = ":".join(parameter_block)
-        print(parameter)
+        info(parameter)
         endpoints.serverFromString(reactor, parameter).listen(self.factory)
 
         def runner(input_queue, output_queue, signal_queue_r, signal_queue_w):
@@ -277,22 +272,22 @@ class EaterBridgeServer(object):
 
             def __update__():
                 try:
-                    if input_queue.full() == False:
+                    if input_queue.full() is False:
                         obj = self.factory.getDataBlocksAsArray(-1)
                         if len(obj) > 0:
                             input_queue.put_nowait(obj)
-                except:
-                    traceback.print_exc()
+                except Exception as e:
+                    warn(e)
                     pass
                 try:
-                    if output_queue.empty() == False:
+                    if output_queue.empty() is False:
                         obj = output_queue.get_nowait()
                         self.factory.setDataBlocksFromArray(obj)
-                    if signal_queue_r.empty() == False:
+                    if signal_queue_r.empty() is False:
                         signal_queue_w.put(1)
                         return
-                except:
-                    traceback.print_exc()
+                except Exception as e:
+                    warn(e)
                     pass
                 reactor.callLater(0.001, __update__)
 
@@ -318,10 +313,9 @@ class EaterBridgeServer(object):
             self.signal_queue_r.put_nowait(None)
             self.signal_queue_w.get()
         except Exception as e:
-            print(e)
+            warn(e)
 
     def run(self):
         while True:
             self.update()
             time.sleep(0.001)
-

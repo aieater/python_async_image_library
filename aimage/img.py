@@ -136,7 +136,7 @@ def opencv_encoder(data, **kargs):
         quality = kargs["quality"]
     data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
-    if check == False:
+    if check is False:
         raise "Invalid image data"
     return data
 
@@ -167,7 +167,7 @@ def _opencv_encoder_(data, **kargs):
         quality = kargs["quality"]
     data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
-    if check == False:
+    if check is False:
         raise "Invalid image data"
     return data
 

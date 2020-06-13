@@ -122,7 +122,7 @@ def _cv2_imshow_(mes, image):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cv2.imshow(mes, image)
     ret = cv2.waitKey(1)
-    if __front_flag_for_opencv_problem__ == False:
+    if __front_flag_for_opencv_problem__ is False:
         __front_flag_for_opencv_problem__ = True
         if platform.system() == "Darwin":
             os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')

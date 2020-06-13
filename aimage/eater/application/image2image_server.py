@@ -7,21 +7,32 @@ import signal
 import time
 
 import numpy as np
-
+import uuid
 from ..bridge import server as ebs
+from ..bridge import protocol as bp
 
 from easydict import EasyDict as edict
 
 
+class ProtocolStack(ebs.StreamFactory):
+    def build_protocol_stack(self, s):
+        s.add_input_protocol(bp.LengthSplitIn())
+        s.add_input_protocol(bp.ImageDecoder())
+        s.add_output_protocol(bp.ImageEncoder(quality=60))
+        s.add_output_protocol(bp.LengthSplitOut())
+
+
 class ImageServer(ebs.EaterBridgeServer):
     def __init__(self, **kargs):
+        kargs["protocol_stack"] = ProtocolStack
         super().__init__(**kargs)
         self.data_queue = []
         self.model = None
-        import evaluator
-        self.model = evaluator.Evaluator()
 
     def update(self):
+        if self.model is None:
+            import evaluator
+            self.model = evaluator.Evaluator()
         self.data_queue += self.getDataBlocksAsArray()
         if len(self.data_queue) > 0:
             batch_data, socket_mapper, self.data_queue = ebs.slice_as_batch_size(self.data_queue, 128)
@@ -34,7 +45,3 @@ class ImageServer(ebs.EaterBridgeServer):
 
             stored_datablocks = ebs.pack_array_datablock(socket_mapper, batch_data)
             self.setDataBlocksFromArray(stored_datablocks)
-
-
-def server(args):
-    return ImageServer(**args.__dict__)

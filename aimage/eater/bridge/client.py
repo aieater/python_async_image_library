@@ -1,59 +1,35 @@
 #!/usr/bin/env python3
-from __future__ import print_function
-import os
-
-
-def to_bool(s):
-    return s in [1, 'True', 'TRUE', 'true', '1', 'yes', 'Yes', 'Y', 'y', 't', 'on']
-
-
-import inspect
-DEBUG = False
-if "DEBUG" in os.environ:
-    DEBUG = to_bool(os.environ["DEBUG"])
-    if DEBUG:
-        try:
-            import __builtin__
-        except ImportError:
-            import builtins as __builtin__
-        import inspect
-
-        def lpad(s, c):
-            return s[0:c].ljust(c)
-
-        def rpad(s, c):
-            if len(s) > c: return s[len(s) - c:]
-            else: return s.rjust(c)
-
-        def print(*args, **kwargs):
-            s = inspect.stack()
-            __builtin__.print("\033[44m%s@%s(%s):\033[0m " % (rpad(s[1][1], 20), lpad(str(s[1][3]), 10), rpad(str(s[1][2]), 4)), end="")
-            return __builtin__.print(*args, **kwargs)
-
-
-def _pre_():
-    print("\033[A                                                                \033[A", flush=True)
-
-
 import math
 import queue
-import signal
 import threading
-import time
 import traceback
 import uuid
 
-import cv2
-import numpy as np
-from twisted.internet import endpoints, protocol, reactor, ssl
-from twisted.protocols import basic
+from twisted.internet import protocol, reactor, ssl
 
-from . import protocol as pb
+from ..bridge import protocol as bp
+
+
+
+def success(*args, **kwargs):
+    print('\033[0;32m', *args, '\033[0m', **kwargs)
+
+
+def warn(*args, **kwargs):
+    print('\033[0;31m', *args, '\033[0m', **kwargs)
+
+
+def info(*args, **kwargs):
+    print('\033[0;36m', *args, '\033[0m', **kwargs)
+
+
+def estimate_retry_delay_time(r, max_delay=20):
+    s = math.exp(r)
+    return s if s < 20 else 20
 
 
 class StackedClientSocketProtocol(protocol.Protocol):
     def __init__(self, rq, wq):
-        self.listener = None
         self.rq = rq
         self.wq = wq
         self.input_middlewares = []
@@ -62,21 +38,26 @@ class StackedClientSocketProtocol(protocol.Protocol):
         self.is_invalid_socket = False
         self.queue_name = "default"
 
+    def add_input_protocol(self, p):
+        p.queue_name = self.queue_name
+        self.input_middlewares.append(p)
+
+    def add_output_protocol(self, p):
+        p.queue_name = self.queue_name
+        self.output_middlewares.append(p)
+
     def connectionMade(self):
         import aimage
         aimage.create_queue(self.queue_name)
         self.is_available = True
-        if self.listener:
-            self.listener.disconnected(self)
 
     def connectionLost(self, reason):
         import aimage
         aimage.delete_queue(self.queue_name)
         self.is_available = False
-        if self.listener:
-            self.listener.connected(self)
 
     def dataReceived(self, data):
+        info("TCP:READ:", data)
         if self.is_available:
             self.input_middlewares[0].write(data)
 
@@ -100,20 +81,23 @@ class StackedClientSocketProtocol(protocol.Protocol):
             buf = self.output_middlewares[-1].read(-1)
             if self.is_available and len(buf) > 0:
                 self.transport.write(buf)
-        except:
-            traceback.print_exc()
+                info("TCP:WRITE:", buf)
+        except Exception as e:
+            print(e)
             self.is_invalid_socket = True
             try:
                 self.transport.close()
                 self.wq.clear()
                 self.rq.clear()
-            except:
-                pass
-        while self.rq.qsize() > 0:
-            self.output_middlewares[0].write(self.rq.get())
+            except Exception as e:
+                print(e)
+        while self.rq.empty() is False:
+            o = self.rq.get_nowait()
+            self.output_middlewares[0].write(o)
+
         b = self.input_middlewares[-1].read(-1)
         if len(b) > 0:
-            self.wq.put(b)
+            self.wq.put_nowait(b)
 
 
 class StreamClientFactory(protocol.ClientFactory):
@@ -125,34 +109,35 @@ class StreamClientFactory(protocol.ClientFactory):
         self.connected = False
         self.protocol_instance = None
         self.addr = None
-        print(kwargs)
         self.kwargs = kwargs
-        self.quality = kwargs["quality"] if "quality" in kwargs else 60
-        self.listener = kwargs["listener"]
         self.update()
 
     def startedConnecting(self, connector):
-        print('Started to connect.', self.addr)
+        info(f'Started to connect. {connector.host}:{connector.port} Timeout:{connector.timeout}')
+
+    # Override
+    def on_disconnected(self):
+        pass
+
+    # Override
+    def on_connected(self):
+        self.protocol_instance.add_input_protocol(bp.DirectStream())
+        self.protocol_instance.add_output_protocol(bp.DirectStream())
 
     def buildProtocol(self, addr):
         self.addr = addr
         self.retry = 0
         self.retying = False
         self.connected = True
-        print('Connected', addr)
+        success('Connected', addr)
         s = StackedClientSocketProtocol(self.rq, self.wq)
         # s.input_middlewares.append(bp.DirectStream())
         # s.output_middlewares.append(bp.DirectStream())
-        s.listener = self.listener
         s.queue_name = str(uuid.uuid4())
-        s.input_middlewares.append(pb.LengthSplitIn())
-        s.input_middlewares.append(pb.ImageDecoder(queue_name=s.queue_name))
-        s.output_middlewares.append(pb.ImageEncoder(queue_name=s.queue_name, quality=self.quality))
-        s.output_middlewares.append(pb.LengthSplitOut())
-
+        self.protocol_instance = s
         # s.input_middlewares.append(bp.LengthSplitIn())
         # s.output_middlewares.append(bp.LengthSplitOut())
-        self.protocol_instance = s
+        self.on_connected()
         return s
 
     def update(self):
@@ -163,39 +148,40 @@ class StreamClientFactory(protocol.ClientFactory):
         reactor.callLater(0.001, self.update)
 
     def deffered_connect(self, args):
-        if self.retying == False and self.connected == False:
+        if self.retying is False and self.connected is False:
             self.retying = True
             self.retry += 1
             args[0].connect()
 
     def clientConnectionLost(self, connector, reason):
-        print('Lost connection.  Reason:', reason)
+        delay = estimate_retry_delay_time(self.retry)
+        warn(f'Lost connection. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason:', reason)
+        self.on_disconnected()
         self.connected = False
         self.retying = False
-        print(math.exp(self.retry))
-        reactor.callLater(math.exp(self.retry), self.deffered_connect, (connector, ))
+        reactor.callLater(delay, self.deffered_connect, (connector, ))
 
     def clientConnectionFailed(self, connector, reason):
-        print('Connection failed. Reason:', reason)
+        delay = estimate_retry_delay_time(self.retry)
+        warn(f'Connection failed. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason:', reason)
+        self.on_disconnected()
         self.connected = False
         self.retying = False
-        reactor.callLater(math.exp(self.retry), self.deffered_connect, (connector, ))
+        reactor.callLater(delay, self.deffered_connect, (connector, ))
 
 
 class EaterBridgeClient:
     def __init__(self, **kargs):
         self.kargs = kargs
-        self.listener = kargs["listener"]
         self.host = kargs["host"]
         self.port = kargs["port"]
         self.rq = queue.Queue()
         self.wq = queue.Queue()
+        self.protocol_stack = kargs["protocol_stack"](self.rq, self.wq, **self.kargs)
 
     def start(self):
-        print("Start client")
-        self.deffered = reactor.connectTCP(self.host, self.port, StreamClientFactory(self.rq, self.wq, **self.kargs))
+        self.deffered = reactor.connectTCP(self.host, self.port, self.protocol_stack)
         # self.deffered = reactor.connectSSL(self.host, self.port, StreamClientFactory(self.rq,self.wq),ssl.ClientContextFactory())
-        print("Processing on background")
         self.thread = threading.Thread(target=reactor.run, args=(False, ))
         self.thread.setDaemon(True)
         self.thread.start()
@@ -204,13 +190,12 @@ class EaterBridgeClient:
         reactor.stop()
 
     def write(self, blocks):
-        if self.rq.qsize() < 1:
+        if self.rq.empty():
             self.rq.put(blocks)
             return True
         return False
 
     def read(self, size=-1):
-        if self.wq.qsize() > 0:
+        if self.wq.empty() is False:
             return self.wq.get()
-        return []
-
+        return None
