@@ -40,11 +40,13 @@ def echo():
             if self.model is None:
                 import evaluator
                 self.model = evaluator.Evaluator()
-            self.data_queue += self.getDataBlocksAsArray()
+            new_data = self.getDataBlocksAsArray()
+            self.data_queue += new_data
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = server.slice_as_batch_size(self.data_queue, 128)
                 stored_datablocks = server.pack_array_datablock(socket_mapper, batch_data)
                 self.setDataBlocksFromArray(stored_datablocks)
+            return len(new_data)
 
     # class EchoServer(server.EaterBridgeServer):
     #     def __init__(self, **kargs):
@@ -99,12 +101,14 @@ def data2data():
             if self.model is None:
                 import evaluator
                 self.model = evaluator.Evaluator()
-            self.data_queue += self.getDataBlocksAsArray()
+            new_data = self.getDataBlocksAsArray()
+            self.data_queue += new_data
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = server.slice_as_batch_size(self.data_queue, 128)
                 print("EchoServer:update", self.data_queue,  batch_data)
                 stored_datablocks = server.pack_array_datablock(socket_mapper, batch_data)
                 self.setDataBlocksFromArray(stored_datablocks)
+            return len(new_data)
 
     args.protocol_stack = ProtocolStack
     bridge = EchoServer(**args.__dict__)
@@ -124,4 +128,4 @@ def data2data():
 
 
 if __name__ == "__main__":
-    data2data()
+    echo()

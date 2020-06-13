@@ -71,6 +71,7 @@ class StackedServerSocketProtocol(protocol.Protocol):
         info("TCP:READ:", data)
 
     def update(self):
+        has_event = 0
         if time.time() - self.tm > 1.0:
             if len(self.in_ave_q) > 3:
                 self.in_ave_q.pop(0)
@@ -91,6 +92,7 @@ class StackedServerSocketProtocol(protocol.Protocol):
                 b = self.input_middlewares[i].read(-1)
                 if len(b):
                     self.input_middlewares[i + 1].write(b)
+                    has_event += 1
 
             for m in self.input_middlewares:
                 m.update()
@@ -99,6 +101,7 @@ class StackedServerSocketProtocol(protocol.Protocol):
                 b = self.output_middlewares[i].read(-1)
                 if len(b):
                     self.output_middlewares[i + 1].write(b)
+                    has_event += 1
             for m in self.output_middlewares:
                 m.update()
 
@@ -107,13 +110,16 @@ class StackedServerSocketProtocol(protocol.Protocol):
                 self.bandwidth_outbound += len(buf)
                 self.transport.write(buf)
                 info("TCP:WRITE:", buf)
+                has_event += 1
         except Exception as e:
             warn(e)
             try:
                 self.transport.close()
+                has_event += 1
             except Exception as e:
                 warn(e)
                 pass
+        return has_event
 
     def read(self, size=-1):
         if self.is_available:
@@ -173,16 +179,17 @@ class StreamFactory(protocol.Factory):
                 client_socket.write([data])
 
     def update(self):
+        has_event = 0
         for k in self.clients:
             client_socket = self.clients[k]
-            client_socket.update()
+            has_event += client_socket.update()
         t = time.time()
         if t - self.log_tm > 1.0:
             self.log_tm = t
             for k in self.clients:
                 print(self.clients[k].description)
                 print("\033[2A", flush=True)
-        reactor.callLater(0.001, self.update)
+        reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 
 # batch_data,src_block,rest_block
@@ -271,11 +278,13 @@ class EaterBridgeServer(object):
             import aimage
 
             def __update__():
+                has_event = 0
                 try:
                     if input_queue.full() is False:
                         obj = self.factory.getDataBlocksAsArray(-1)
                         if len(obj) > 0:
                             input_queue.put_nowait(obj)
+                            has_event += 1
                 except Exception as e:
                     warn(e)
                     pass
@@ -283,13 +292,15 @@ class EaterBridgeServer(object):
                     if output_queue.empty() is False:
                         obj = output_queue.get_nowait()
                         self.factory.setDataBlocksFromArray(obj)
+                        has_event += 1
                     if signal_queue_r.empty() is False:
                         signal_queue_w.put(1)
+                        # End of application
                         return
                 except Exception as e:
                     warn(e)
                     pass
-                reactor.callLater(0.001, __update__)
+                reactor.callLater(0.001 if has_event > 0 else 0.02, __update__)
 
             __update__()
             reactor.run(False)
@@ -306,7 +317,7 @@ class EaterBridgeServer(object):
         # self.thread.start()
 
     def update(self):
-        pass
+        return 0
 
     def destroy(self):
         try:
@@ -317,5 +328,6 @@ class EaterBridgeServer(object):
 
     def run(self):
         while True:
-            self.update()
-            time.sleep(0.001)
+            has_event = self.update()
+            if has_event == 0:
+                time.sleep(0.02)

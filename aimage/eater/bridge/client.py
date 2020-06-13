@@ -129,7 +129,7 @@ class StreamClientFactory(protocol.ClientFactory):
         self.retry = 0
         self.retying = False
         self.connected = True
-        success('Connected', addr)
+        success(f'Connected {addr.type}://{addr.host}:{addr.port}')
         s = StackedClientSocketProtocol(self.rq, self.wq)
         # s.input_middlewares.append(bp.DirectStream())
         # s.output_middlewares.append(bp.DirectStream())

@@ -34,7 +34,8 @@ class ImageServer(ebs.EaterBridgeServer):
         print("Evaluator Loaded")
 
     def update(self):
-        self.data_queue += bridge.getDataBlocksAsArray()
+        new_datas = bridge.getDataBlocksAsArray()
+        self.data_queue += new_datas
         if len(self.data_queue) > 0:
             batch_data, socket_mapper, self.data_queue = ebs.slice_as_batch_size(self.data_queue, 128)
 
@@ -45,6 +46,8 @@ class ImageServer(ebs.EaterBridgeServer):
                 batch_data[i] = r_image
             stored_datablocks = ebs.pack_array_datablock(socket_mapper, batch_data)
             bridge.setDataBlocksFromArray(stored_datablocks)
+
+        return len(new_datas)
 
 
 def server(args):

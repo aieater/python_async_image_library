@@ -35,28 +35,22 @@ def echo():
         def on_disconnected(self):
             pass
 
-    #client = EaterBridgeClientTest(host="localhost", port=3000, protocol=StreamClientFactoryTest, listener=CListener())
     c = client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
     c.start()
-
-    cap = cv2.VideoCapture("/Users/johndoe/Downloads/twice.mp4")
-
+    request_count = 0
+    index = 0
     while True:
-        c.write("test")
-
-        # check, frame = cap.read()
-        # if check:
-        #     client.write(np.array([frame]))
-        blocks = c.read()
-        if isinstance(blocks, bytes):
-            # TODO list / bytes
-            print(blocks.decode('utf-8'))
-            # for data in extend:
-            #     print(data.decode('utf-8'))
-            # blocks = client.read()
-            # for img in blocks:
-            #     aimage.show(img)
-        time.sleep(1)
+        if request_count < 1:
+            s = str(index)
+            c.write(s)
+            request_count += len(s)
+            index += 1
+        data = c.read()
+        if isinstance(data, bytes) or isinstance(data, bytearray):
+            print(data)
+            request_count -= len(data)
+        else:
+            time.sleep(0.001)
 
 def data2data():
     class ProtocolStack(bridge.client.StreamClientFactory):
@@ -94,8 +88,5 @@ def data2data():
 
 
 if __name__ == "__main__":
-    data2data()
-    # import datetime
-    t = datetime.datetime.now()
-    ts = f'{t.year}/{t.month}/{t.day} {str(t.hour).zfill(2)}:{str(t.minute).zfill(2)}:{str(t.second).zfill(2)}'
-    # print(ts)
+    #data2data()
+    echo()
