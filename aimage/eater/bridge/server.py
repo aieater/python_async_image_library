@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
 import datetime
+import logging
 import multiprocessing
 import time
 import uuid
+
 import numpy as np
 from twisted.internet import endpoints, protocol, reactor, ssl
 
 from ..bridge import protocol as bp
-
-import logging
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logger.setLevel(logging.DEBUG)
 logger.propagate = True
 
-
 DEBUG = False
-
 
 
 def debug(*args, **kwargs):
@@ -34,7 +32,6 @@ def warn(*args, **kwargs):
 
 def info(*args, **kwargs):
     logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
-
 
 
 class StackedServerSocketProtocol(protocol.Protocol):
@@ -163,6 +160,7 @@ class ObjectTable:
 class StreamFactory(protocol.Factory):
     def __init__(self, **kargs):
         super().__init__()
+        self.previous_max_socket_num = 0
         self.enabled_info = False
         self.clients = {}
         self.log_tm = 0
@@ -208,9 +206,13 @@ class StreamFactory(protocol.Factory):
         if t - self.log_tm > 1.0:
             self.log_tm = t
             if self.enabled_info:
-                for k in self.clients:
-                    print(self.clients[k].description, flush=True)
+                for k in range(self.previous_max_socket_num):
                     print("\033[2A", flush=True)
+                    print("\033[0K", end="\r")
+                if len(self.clients) > 0:
+                    for k in self.clients:
+                        print(self.clients[k].description, flush=True)
+                self.previous_max_socket_num = len(self.clients)
         reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 

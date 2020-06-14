@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import numpy as np
+import logging
 import struct
 
-import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -10,7 +10,6 @@ logger.setLevel(logging.DEBUG)
 logger.propagate = True
 
 DEBUG = False
-
 
 
 def debug(*args, **kwargs):

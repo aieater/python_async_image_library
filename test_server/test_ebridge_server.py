@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
-import logging
-from logging.handlers import TimedRotatingFileHandler
 import json
+import logging
 import os
 import signal
-import time
 import sys
+import time
+from logging.handlers import TimedRotatingFileHandler
 
 import cv2
 import numpy as np
-#from aimage.eater.application import image2json_server
 from easydict import EasyDict as edict
 
 import aimage.eater.bridge as bridge
@@ -87,32 +86,8 @@ def echo():
                 self.setDataBlocksFromArray(stored_datablocks)
             return len(new_data)
 
-    # class EchoServer(server.EaterBridgeServer):
-    #     def __init__(self, **kargs):
-    #         super().__init__(**kargs)
-    #         self.data_queue = []
-    #         self.model = None
-
-    #     def update(self):
-    #         if self.model is None:
-    #             import evaluator
-    #             self.model = evaluator.Evaluator()
-    #         self.data_queue += self.getDataBlocksAsArray()
-    #         if len(self.data_queue) > 0:
-    #             batch_data, socket_mapper, self.data_queue = server.slice_as_batch_size(self.data_queue, 128)
-
-    #             batch_data = np.uint8(batch_data)
-    #             for i in range(len(batch_data)):
-    #                 img = batch_data[i]
-    #                 r_image = self.model.eval(img)
-    #                 batch_data[i] = r_image
-
-    #             stored_datablocks = server.pack_array_datablock(socket_mapper, batch_data)
-    #             self.setDataBlocksFromArray(stored_datablocks)
-
     args.protocol_stack = ProtocolStack
 
-    #bridge = image2image_server.ImageServer(**args.__dict__)
     sv = Server(**args.__dict__)
 
     def terminate(a, b):
@@ -162,8 +137,6 @@ def data2data():
     sv.run()
 
 
-
-
 def image2image():
     class ProtocolStack(bridge.server.StreamFactory):
         def build_protocol_stack(self, s):
@@ -188,6 +161,12 @@ def image2image():
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = bridge.server.slice_as_batch_size(self.data_queue, 128)
                 #debug("EchoServer:update", self.data_queue, batch_data)
+                batch_data = np.uint8(batch_data)
+                for i in range(len(batch_data)):
+                    img = batch_data[i]
+                    r_image = self.model.eval(img)
+                    batch_data[i] = r_image
+
                 stored_datablocks = bridge.server.pack_array_datablock(socket_mapper, batch_data)
                 self.setDataBlocksFromArray(stored_datablocks)
             return len(new_data)
@@ -202,7 +181,6 @@ def image2image():
     signal.signal(signal.SIGINT, terminate)
     signal.signal(signal.SIGTERM, terminate)
     sv.run()
-
 
 
 if __name__ == "__main__":

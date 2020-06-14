@@ -16,7 +16,6 @@ import logging
 
 
 
-
 def debug(*args, **kwargs):
     logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
 
@@ -46,6 +45,7 @@ def setup_log(name=__name__, level=logging.DEBUG):
     # logger.error("error")
     # logger.critical("critical")
     return logger
+
 
 # img = aimage.load("/Volumes/Untitled/m/BLOCK_22105451468000808_4cdf10110ef745499a868b4769328135.jpg")
 # img = aimage.resize(img, 1024)
@@ -142,14 +142,13 @@ def data2data():
             time.sleep(0.01)
 
 
-
 def image2image():
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
             s.add_output_protocol(bridge.protocol.ImageEncoder(quality=60))
             s.add_output_protocol(bridge.protocol.LengthSplitOut())
-            
+
             s.add_input_protocol(bridge.protocol.LengthSplitIn())
             s.add_input_protocol(bridge.protocol.ImageDecoder())
 
@@ -192,8 +191,19 @@ def image2image():
         else:
             time.sleep(0.01)
 
+
 if __name__ == "__main__":
     #data2data()
     # echo()
     image2image()
+    # print("asdkfashdlkfashkdjfhasdlkfhasldkfhalk")
+    # print("\033[1K"+"".rjust(100)+"\033[1K")
+    # print("!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", flush=True)
+    # print("\033[2A", flush=True)
+    # print("\033[1K"+"".rjust(100)+"\033[1K")
+    # print("!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", flush=True)
+    # print("\033[2A", flush=True)
+
+
+
     pass

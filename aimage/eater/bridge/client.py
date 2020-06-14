@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import math
 import queue
 import threading
@@ -7,8 +8,6 @@ import uuid
 from twisted.internet import protocol, reactor, ssl
 
 from ..bridge import protocol as bp
-
-import logging
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
