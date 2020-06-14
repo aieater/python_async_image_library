@@ -81,7 +81,7 @@ def rgb2bgr(img):  # @public
         raise "src image channel must be 3(RGB)"
     if img.dtype != np.uint8:
         raise "expected dtype is uint8."
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    return img[...,::-1]
 
 
 def draw_image_alpha(img, img_rgba, sx, sy):  # @public
@@ -124,9 +124,13 @@ def is_image_ext(f):  # @public
 
 def opencv_decoder(data):
     b = data
-    nb = np.asarray(b, dtype=np.uint8)
+    if type(data) == np.ndarray:
+        nb = data
+    else:
+        nb = np.frombuffer(b, dtype=np.uint8)
     data = cv2.imdecode(nb, cv2.IMREAD_COLOR)
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
+    data = data[...,::-1]
+    
     return data
 
 
@@ -134,7 +138,7 @@ def opencv_encoder(data, **kargs):
     quality = 90
     if "quality" in kargs:
         quality = kargs["quality"]
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
+    data = data[...,::-1]
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check is False:
         raise "Invalid image data"
@@ -157,7 +161,7 @@ def _opencv_decoder_(data):
     b = data
     nb = np.asarray(b, dtype=np.uint8)
     data = cv2.imdecode(nb, cv2.IMREAD_COLOR)
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
+    data = data[...,::-1]
     return data
 
 
@@ -165,7 +169,7 @@ def _opencv_encoder_(data, **kargs):
     quality = 90
     if "quality" in kargs:
         quality = kargs["quality"]
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
+    data = data[...,::-1]
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check is False:
         raise "Invalid image data"
@@ -182,12 +186,12 @@ def encoder(data, **kargs):  # @public
 
 def load_image(path):  # @public
     img = cv2.imread(path)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    img = img[...,::-1]
     return img
 
 
 def save_image(path, data, *, quality=90, format="jpg"):  # @public
-    data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
+    data = data[...,::-1]
     return cv2.imwrite(path, data, [cv2.IMWRITE_JPEG_QUALITY, quality])
 
 
@@ -198,7 +202,7 @@ def load(path):  # @public
         if img is None:
             print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
             raise "Invalid file or invalid path."
-        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img[...,::-1]
     print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
     return None
 

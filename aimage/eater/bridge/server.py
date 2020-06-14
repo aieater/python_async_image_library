@@ -8,17 +8,32 @@ from twisted.internet import endpoints, protocol, reactor, ssl
 
 from ..bridge import protocol as bp
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+logger.setLevel(logging.DEBUG)
+logger.propagate = True
+
+
+DEBUG = False
+
+
+
+def debug(*args, **kwargs):
+    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
+
 
 def success(*args, **kwargs):
-    print('\033[0;32m', *args, '\033[0m', flush=True, **kwargs)
+    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
 
 
 def warn(*args, **kwargs):
-    print('\033[0;31m', *args, '\033[0m', flush=True, **kwargs)
+    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
 
 
 def info(*args, **kwargs):
-    print('\033[0;36m', *args, '\033[0m', flush=True, **kwargs)
+    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
 
@@ -51,7 +66,8 @@ class StackedServerSocketProtocol(protocol.Protocol):
 
     def connectionMade(self):
         import aimage
-        aimage.create_queue(self.queue_name)
+        if aimage.is_native:
+            aimage.create_queue(self.queue_name)
         self.is_available = True
         self.uuid = str(uuid.uuid4())
         self.factory.clients[self.uuid] = self
@@ -59,13 +75,14 @@ class StackedServerSocketProtocol(protocol.Protocol):
 
     def connectionLost(self, reason):
         import aimage
-        aimage.delete_queue(self.queue_name)
+        if aimage.is_native:
+            aimage.delete_queue(self.queue_name)
         self.is_available = False
         del self.factory.clients[self.uuid]
         #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
-        info("TCP:READ:", data)
+        #info("TCP:READ:", data)
         self.bandwidth_inbound += len(data)
         if self.is_available:
             self.input_middlewares[0].write(data)
@@ -109,7 +126,7 @@ class StackedServerSocketProtocol(protocol.Protocol):
             if len(buf) > 0:
                 self.bandwidth_outbound += len(buf)
                 self.transport.write(buf)
-                info("TCP:WRITE:", buf)
+                #info("TCP:WRITE:", buf)
                 has_event += 1
         except Exception as e:
             warn(e)
@@ -146,6 +163,7 @@ class ObjectTable:
 class StreamFactory(protocol.Factory):
     def __init__(self, **kargs):
         super().__init__()
+        self.enabled_info = False
         self.clients = {}
         self.log_tm = 0
         self.update()
@@ -178,6 +196,9 @@ class StreamFactory(protocol.Factory):
                 client_socket = self.clients[k]
                 client_socket.write([data])
 
+    def enable_info(self):
+        self.enabled_info = True
+
     def update(self):
         has_event = 0
         for k in self.clients:
@@ -186,9 +207,10 @@ class StreamFactory(protocol.Factory):
         t = time.time()
         if t - self.log_tm > 1.0:
             self.log_tm = t
-            for k in self.clients:
-                print(self.clients[k].description)
-                print("\033[2A", flush=True)
+            if self.enabled_info:
+                for k in self.clients:
+                    print(self.clients[k].description, flush=True)
+                    print("\033[2A", flush=True)
         reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 
@@ -330,4 +352,4 @@ class EaterBridgeServer(object):
         while True:
             has_event = self.update()
             if has_event == 0:
-                time.sleep(0.02)
+                time.sleep(0.01)

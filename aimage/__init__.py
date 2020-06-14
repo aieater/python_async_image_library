@@ -1,1 +1,1 @@
-from aimage.aimage import *
+from .aimage import *

@@ -5,38 +5,77 @@ import os
 import signal
 import time
 import queue
-
+import sys
 import cv2
 import numpy as np
 
 import aimage
 
 import aimage.eater.bridge as bridge
-import aimage.eater.bridge.client as client
-import aimage.eater.bridge.protocol as protocol
+import logging
 
 
-def terminate(a, b):
-    client.destroy()
-    exit(9)
 
 
-signal.signal(signal.SIGINT, terminate)
-signal.signal(signal.SIGTERM, terminate)
+def debug(*args, **kwargs):
+    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
+
+
+def success(*args, **kwargs):
+    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
+
+
+def warn(*args, **kwargs):
+    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
+
+
+def info(*args, **kwargs):
+    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
+
+
+def setup_log(name=__name__, level=logging.DEBUG):
+    logger = logging.getLogger(name) if name is not None else logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(message)s"))
+    logger.addHandler(handler)
+    # logger.info("info")
+    # logger.debug("debug")
+    # logger.warning("warning")
+    # logger.error("error")
+    # logger.critical("critical")
+    return logger
+
+# img = aimage.load("/Volumes/Untitled/m/BLOCK_22105451468000808_4cdf10110ef745499a868b4769328135.jpg")
+# img = aimage.resize(img, 1024)
+# while True:
+#     aimage.show(img)
+#     aimage.wait(110)
+
+setup_log("aimage.eater.bridge", level=logging.DEBUG)
+logger = setup_log(__name__, logging.DEBUG)
 
 
 def echo():
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
-            s.add_input_protocol(protocol.DirectStream())
-            s.add_output_protocol(protocol.DirectStream())
+            s.add_input_protocol(bridge.protocol.DirectStream())
+            s.add_output_protocol(bridge.protocol.DirectStream())
 
         def on_disconnected(self):
             pass
 
-    c = client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
+    c = bridge.client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
     c.start()
+
+    def terminate(a, b):
+        c.destroy()
+        exit(9)
+
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
     request_count = 0
     index = 0
     while True:
@@ -50,26 +89,41 @@ def echo():
             print(data)
             request_count -= len(data)
         else:
-            time.sleep(0.001)
+            time.sleep(0.01)
 
 
 def data2data():
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
-            s.add_input_protocol(protocol.LengthSplitIn())
-            s.add_output_protocol(protocol.LengthSplitOut())
+            s.add_input_protocol(bridge.protocol.LengthSplitIn())
+            s.add_output_protocol(bridge.protocol.LengthSplitOut())
 
         def on_disconnected(self):
             pass
 
-    c = client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
+    c = bridge.client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
     c.start()
+
+    def terminate(a, b):
+        c.destroy()
+        exit(9)
+
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
     request_count = 0
+    fps_count = 0
+    st = time.time()
     while True:
         if request_count < 2:
+            if time.time() - st > 1.0:
+                info("FPS:", fps_count)
+                st = time.time()
+                fps_count = 0
+            fps_count += 1
+
             datas = ["test", "test2"]
-            print(f"Main:send({request_count}):", datas)
+            info(f"Main:send({request_count}):", datas)
             c.write(datas)
             request_count += 2
         blocks = c.read()
@@ -78,16 +132,68 @@ def data2data():
                 for data in blocks:
                     request_count -= 1
                     # TODO list / bytes
-                    print(f"Main:response({request_count}):", data.decode('utf-8'))
+                    info(f"Main:response({request_count}):", data.decode('utf-8'))
                     # for data in extend:
                     #     print(data.decode('utf-8'))
                     # blocks = client.read()
                     # for img in blocks:
                     #     aimage.show(img)
         else:
-            time.sleep(0.1)
+            time.sleep(0.01)
 
+
+
+def image2image():
+    class ProtocolStack(bridge.client.StreamClientFactory):
+        def on_connected(self):
+            s = self.protocol_instance
+            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=60))
+            s.add_output_protocol(bridge.protocol.LengthSplitOut())
+            
+            s.add_input_protocol(bridge.protocol.LengthSplitIn())
+            s.add_input_protocol(bridge.protocol.ImageDecoder())
+
+        def on_disconnected(self):
+            pass
+
+    c = bridge.client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
+    c.start()
+
+    def terminate(a, b):
+        c.destroy()
+        exit(9)
+
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
+    request_count = 0
+    fps_count = 0
+    st = time.time()
+    cap = aimage.open("~/test.mp4")
+    while True:
+        if request_count < 2:
+            if time.time() - st > 1.0:
+                info("FPS:", fps_count)
+                st = time.time()
+                fps_count = 0
+            fps_count += 1
+
+            check, img = cap.read()
+            if check:
+                debug("Fetch")
+                c.write([img])
+                request_count += 1
+        blocks = c.read()
+        if blocks is not None:
+            if isinstance(blocks, list):
+                for data in blocks:
+                    request_count -= 1
+                    aimage.show(data)
+                    debug("Show")
+        else:
+            time.sleep(0.01)
 
 if __name__ == "__main__":
-    data2data()
+    #data2data()
     # echo()
+    image2image()
+    pass

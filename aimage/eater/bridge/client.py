@@ -2,25 +2,36 @@
 import math
 import queue
 import threading
-import traceback
 import uuid
 
 from twisted.internet import protocol, reactor, ssl
 
 from ..bridge import protocol as bp
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+logger.setLevel(logging.DEBUG)
+logger.propagate = True
+
+DEBUG = False
+
+
+def debug(*args, **kwargs):
+    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
 
 
 def success(*args, **kwargs):
-    print('\033[0;32m', *args, '\033[0m', flush=True, **kwargs)
+    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
 
 
 def warn(*args, **kwargs):
-    print('\033[0;31m', *args, '\033[0m', flush=True, **kwargs)
+    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
 
 
 def info(*args, **kwargs):
-    print('\033[0;36m', *args, '\033[0m', flush=True, **kwargs)
+    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
 def estimate_retry_delay_time(r, max_delay=20):
@@ -48,56 +59,61 @@ class StackedClientSocketProtocol(protocol.Protocol):
 
     def connectionMade(self):
         import aimage
-        aimage.create_queue(self.queue_name)
+        if aimage.is_native:
+            aimage.create_queue(self.queue_name)
         self.is_available = True
 
     def connectionLost(self, reason):
         import aimage
-        aimage.delete_queue(self.queue_name)
+        if aimage.is_native:
+            aimage.delete_queue(self.queue_name)
         self.is_available = False
 
     def dataReceived(self, data):
-        info("TCP:READ:", data)
+        #info("TCP:READ:", data)
         if self.is_available:
             self.input_middlewares[0].write(data)
 
     def update(self):
-        if self.is_invalid_socket: return
         try:
-            # From opponent
-            for i in range(len(self.input_middlewares) - 1):
-                b = self.input_middlewares[i].read()
-                if len(b):
-                    self.input_middlewares[i + 1].write(b)
-            for m in self.input_middlewares:
-                m.update()
-            # To opponent
-            for i in range(len(self.output_middlewares) - 1):
-                b = self.output_middlewares[i].read()
-                if len(b):
-                    self.output_middlewares[i + 1].write(b)
-            for m in self.output_middlewares:
-                m.update()
-            buf = self.output_middlewares[-1].read(-1)
-            if self.is_available and len(buf) > 0:
-                self.transport.write(buf)
-                info("TCP:WRITE:", buf)
-        except Exception as e:
-            print(e)
-            self.is_invalid_socket = True
+            if self.is_invalid_socket: return
             try:
-                self.transport.close()
-                self.wq.clear()
-                self.rq.clear()
+                # From opponent
+                for i in range(len(self.input_middlewares) - 1):
+                    b = self.input_middlewares[i].read()
+                    if len(b):
+                        self.input_middlewares[i + 1].write(b)
+                for m in self.input_middlewares:
+                    m.update()
+                # To opponent
+                for i in range(len(self.output_middlewares) - 1):
+                    b = self.output_middlewares[i].read()
+                    if len(b):
+                        self.output_middlewares[i + 1].write(b)
+                for m in self.output_middlewares:
+                    m.update()
+                buf = self.output_middlewares[-1].read(-1)
+                if self.is_available and len(buf) > 0:
+                    self.transport.write(buf)
+                    #info("TCP:WRITE:", buf)
             except Exception as e:
                 print(e)
-        while self.rq.empty() is False:
-            o = self.rq.get_nowait()
-            self.output_middlewares[0].write(o)
+                self.is_invalid_socket = True
+                try:
+                    self.transport.close()
+                    self.wq.clear()
+                    self.rq.clear()
+                except Exception as e:
+                    print(e)
+            while self.rq.empty() is False:
+                o = self.rq.get_nowait()
+                self.output_middlewares[0].write(o)
 
-        b = self.input_middlewares[-1].read(-1)
-        if len(b) > 0:
-            self.wq.put_nowait(b)
+            b = self.input_middlewares[-1].read(-1)
+            if len(b) > 0:
+                self.wq.put_nowait(b)
+        except Exception as e:
+            print(e)
 
 
 class StreamClientFactory(protocol.ClientFactory):

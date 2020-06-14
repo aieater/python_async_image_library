@@ -6,6 +6,8 @@ from aimage.ui import *
 from aimage.stub_data_loader_od import *
 from aimage.stub_data_loader import *
 
+is_native = False
+
 try:
     from aimage_native import *
     print('\033[0;36m' + "========================================================" + '\033[0m')
@@ -14,6 +16,7 @@ try:
     print('\033[0;36m' + "aimage loading speed is faster than Pillow/OpenCV/TensorFlow." + '\033[0m')
     print('\033[0;36m' + "Event driven non blocking loader is available." + '\033[0m')
     print('\033[0;36m' + "========================================================" + '\033[0m')
+    is_native = True
 except:
     print('\033[0;31m' + "aimage_native library failed to load." + '\033[0m')
     print('\033[0;31m' + "===========================================================================" + '\033[0m')

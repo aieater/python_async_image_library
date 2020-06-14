@@ -2,12 +2,36 @@
 import numpy as np
 import struct
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+logger.setLevel(logging.DEBUG)
+logger.propagate = True
+
 DEBUG = False
+
+
+
+def debug(*args, **kwargs):
+    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
+
+
+def success(*args, **kwargs):
+    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
+
+
+def warn(*args, **kwargs):
+    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
+
+
+def info(*args, **kwargs):
+    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
 def check_type(d, name):
     if DEBUG:
-        print(name, type(d))
+        debug(name, type(d))
 
 
 def to_bytes(d):
@@ -51,7 +75,7 @@ class StreamIO:
             return slen
         else:
             ex = "expected type is bytes. Got object was " + str(type(data))
-            print(ex)
+            warn(ex)
             raise ex
         return slen
 
@@ -89,12 +113,12 @@ class LengthSplitIn:  # Stream(socket) to Blocks
 
     # stream to blocks
     def write(self, data):
-        print("LengthSplitIn:write:I", data)
+        #debug("LengthSplitIn:write:I", data)
         slen = len(data)
         blen = self.buffer.length()
         check_type(data, "W:LengthSplitIn")
         if slen + blen > self.max_buffer_size:
-            print("LengthSplitIn:write", "Data size:", slen, "Buffer size:", blen)
+            debug("LengthSplitIn:write", "Data size:", slen, "Buffer size:", blen)
             raise Exception("too much data size")
         self.buffer.write(data)
         buf = self.buffer.getbuffer()
@@ -105,7 +129,7 @@ class LengthSplitIn:  # Stream(socket) to Blocks
             if len(buf) >= 4 + body_length:
                 head = self.buffer.read(4)
                 body = self.buffer.read(body_length)
-                print("LengthSplitIn:write:R", body)
+                # debug("LengthSplitIn:write:R", body)
                 self.blocks.append(body)
                 buf = self.buffer.getbuffer()
             else:
@@ -144,7 +168,7 @@ class LengthSplitOut:  # Block(s) to Stream(socket)
         for data in blocks:
             tlen += len(data)
         if tlen + blen > self.max_buffer_size:
-            print("LengthSplitOut:write", "Data size:", tlen, "Buffer size:", blen)
+            debug("LengthSplitOut:write", "Data size:", tlen, "Buffer size:", blen)
             raise Exception("too much data size")
 
         for data in blocks:
@@ -193,8 +217,8 @@ class ImageDecoder:  # Blocks to Blocks
         return blocks
 
     def update(self):
-        if True:
-            import aimage
+        import aimage
+        if False:
             objs = []
             for b in self.input_blocks:
                 objs.append({"input_buffer": b, "id": self.req_index})
@@ -236,9 +260,11 @@ class ImageEncoder:  # Blocks to Blocks
     def write(self, blocks):
         slen = 0
         check_type(blocks, "W:ImageEncoder")
+        if isinstance(blocks, list) is False:
+            raise Exception("Arg must be list(numpy,numpy,...)")
         for data in blocks:
             slen += len(data)
-            self.input_blocks.append(data)
+            self.input_blocks.append(np.uint8(data))
         return slen
 
     def read(self, size=-1):
@@ -251,8 +277,8 @@ class ImageEncoder:  # Blocks to Blocks
         return blocks
 
     def update(self):
-        if True:
-            import aimage
+        import aimage
+        if False:
             objs = []
             for b in self.input_blocks:
                 objs.append({"input_buffer": b, "id": self.req_index})
@@ -282,14 +308,14 @@ class ImageEncoder:  # Blocks to Blocks
 
 
 def protocols():
-    print(DirectStream().info())
-    print(LengthSplitIn().info())
-    print(LengthSplitOut().info())
-    print(ImageDecoder().info())
-    print(ImageEncoder().info())
+    debug(DirectStream().info())
+    debug(LengthSplitIn().info())
+    debug(LengthSplitOut().info())
+    debug(ImageDecoder().info())
+    debug(ImageEncoder().info())
 
 
 if __name__ == '__main__':
-    print("=============================================")
+    debug("=============================================")
     protocols()
-    print("=============================================")
+    debug("=============================================")

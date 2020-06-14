@@ -22,7 +22,7 @@ except ImportError:
 
 def _ipython_imshow_(image):
     import IPython.display
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image = image[...,::-1]
     check, img = cv2.imencode(".png", image)
     decoded_bytes = img.tobytes()
     IPython.display.display(IPython.display.Image(data=decoded_bytes))
@@ -119,7 +119,7 @@ __front_flag_for_opencv_problem__ = False
 
 def _cv2_imshow_(mes, image):
     global __front_flag_for_opencv_problem__
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image = image[...,::-1]
     cv2.imshow(mes, image)
     ret = cv2.waitKey(1)
     if __front_flag_for_opencv_problem__ is False:

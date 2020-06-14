@@ -4,7 +4,7 @@ import numpy as np
 class Evaluator():
     def __init__(self):
         #self.model = yolov3.YOLO()
-        print("EVAL")
+        print("Initialize Evaluator class")
         pass
 
     def eval(self, img):
