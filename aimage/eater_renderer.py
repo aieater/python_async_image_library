@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import os
+import sys
+
 import acapture
 import pyglview
-import sys
-import traceback
 
-import importlib
-import eater_bridge_server as ebs
-import os, sys
+import evaluator
+
 basepath = os.getcwd()
 sys.path.append(basepath)
 
@@ -15,7 +14,6 @@ if len(sys.argv) > 1:
     f = sys.argv[1]
 cap = acapture.open(f)
 view = pyglview.Viewer(keyboard_listener=cap.keyboard_listener)
-import evaluator
 model = evaluator.Evaluator()
 
 
@@ -25,11 +23,9 @@ def loop():
         if check:
             frame = model.render(frame)
             view.set_image(np.array(frame))
-    except:
-        traceback.print_exc()
+    except Exception as e:
+        print(e)
         exit(9)
-    pass
-
 
 view.set_loop(loop)
 view.start()

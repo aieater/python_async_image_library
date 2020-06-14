@@ -6,7 +6,10 @@ import time
 import uuid
 
 import numpy as np
-from twisted.internet import endpoints, protocol, reactor, ssl
+import twisted.internet.protocol
+import twisted.internet.endpoints
+import twisted.internet.reactor
+import twisted.internet.ssl
 
 from ..bridge import protocol as bp
 
@@ -34,7 +37,7 @@ def info(*args, **kwargs):
     logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
-class StackedServerSocketProtocol(protocol.Protocol):
+class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
     def __init__(self, factory, addr):
         super().__init__()
         self.addr = addr
@@ -157,7 +160,7 @@ class ObjectTable:
         pass
 
 
-class StreamFactory(protocol.Factory):
+class StreamFactory(twisted.internet.protocol.Factory):
     def __init__(self, **kargs):
         super().__init__()
         self.previous_max_socket_num = 0
@@ -213,14 +216,13 @@ class StreamFactory(protocol.Factory):
                     for k in self.clients:
                         print(self.clients[k].description, flush=True)
                 self.previous_max_socket_num = len(self.clients)
-        reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
+        twisted.internet.reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 
 # batch_data,src_block,rest_block
 def slice_as_batch_size(data_queue, batch_size):
     socket_mapper = []
     batch_data = []
-    cnt = 0
     while len(socket_mapper) < batch_size and len(data_queue) > 0:
         obj = data_queue.pop(0)
         socket_mapper.append(obj)
@@ -230,7 +232,6 @@ def slice_as_batch_size(data_queue, batch_size):
 
 def pack_array_datablock(socket_mapper, modified_data):
     dst_mapper = []
-    pre = None
     for i in range(len(socket_mapper)):
         obj = socket_mapper[i]
         obj["data"] = modified_data[i]
@@ -296,7 +297,7 @@ class EaterBridgeServer(object):
             raise Exception("protocol_stack is required.")
         parameter = ":".join(parameter_block)
         info(parameter)
-        endpoints.serverFromString(reactor, parameter).listen(self.factory)
+        twisted.internet.endpoints.serverFromString(twisted.internet.reactor, parameter).listen(self.factory)
 
         def runner(input_queue, output_queue, signal_queue_r, signal_queue_w):
             import aimage
@@ -324,10 +325,10 @@ class EaterBridgeServer(object):
                 except Exception as e:
                     warn(e)
                     pass
-                reactor.callLater(0.001 if has_event > 0 else 0.02, __update__)
+                twisted.internet.reactor.callLater(0.001 if has_event > 0 else 0.02, __update__)
 
             __update__()
-            reactor.run(False)
+            twisted.internet.reactor.run(False)
 
         self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         self.thread.start()

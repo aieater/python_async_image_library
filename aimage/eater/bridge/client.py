@@ -5,7 +5,8 @@ import queue
 import threading
 import uuid
 
-from twisted.internet import protocol, reactor, ssl
+import twisted.internet.protocol
+import twisted.internet.reactor
 
 from ..bridge import protocol as bp
 
@@ -38,7 +39,7 @@ def estimate_retry_delay_time(r, max_delay=20):
     return s if s < 20 else 20
 
 
-class StackedClientSocketProtocol(protocol.Protocol):
+class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
     def __init__(self, rq, wq):
         self.rq = rq
         self.wq = wq
@@ -115,7 +116,7 @@ class StackedClientSocketProtocol(protocol.Protocol):
             print(e)
 
 
-class StreamClientFactory(protocol.ClientFactory):
+class StreamClientFactory(twisted.internet.protocol.ClientFactory):
     def __init__(self, rq, wq, **kwargs):
         self.rq = rq
         self.wq = wq
@@ -146,12 +147,8 @@ class StreamClientFactory(protocol.ClientFactory):
         self.connected = True
         success(f'Connected {addr.type}://{addr.host}:{addr.port}')
         s = StackedClientSocketProtocol(self.rq, self.wq)
-        # s.input_middlewares.append(bp.DirectStream())
-        # s.output_middlewares.append(bp.DirectStream())
         s.queue_name = str(uuid.uuid4())
         self.protocol_instance = s
-        # s.input_middlewares.append(bp.LengthSplitIn())
-        # s.output_middlewares.append(bp.LengthSplitOut())
         self.on_connected()
         return s
 
@@ -160,9 +157,9 @@ class StreamClientFactory(protocol.ClientFactory):
             self.protocol_instance.update()
             if self.protocol_instance.is_invalid_socket:
                 self.protocol_instance = None
-        reactor.callLater(0.001, self.update)
+        twisted.internet.reactor.callLater(0.001, self.update)
 
-    def deffered_connect(self, args):
+    def deferred_connect(self, args):
         if self.retying is False and self.connected is False:
             self.retying = True
             self.retry += 1
@@ -174,7 +171,7 @@ class StreamClientFactory(protocol.ClientFactory):
         self.on_disconnected()
         self.connected = False
         self.retying = False
-        reactor.callLater(delay, self.deffered_connect, (connector, ))
+        twisted.internet.reactor.callLater(delay, self.deferred_connect, (connector, ))
 
     def clientConnectionFailed(self, connector, reason):
         delay = estimate_retry_delay_time(self.retry)
@@ -182,7 +179,7 @@ class StreamClientFactory(protocol.ClientFactory):
         self.on_disconnected()
         self.connected = False
         self.retying = False
-        reactor.callLater(delay, self.deffered_connect, (connector, ))
+        twisted.internet.reactor.callLater(delay, self.deferred_connect, (connector, ))
 
 
 class EaterBridgeClient:
@@ -195,14 +192,14 @@ class EaterBridgeClient:
         self.protocol_stack = kargs["protocol_stack"](self.rq, self.wq, **self.kargs)
 
     def start(self):
-        self.deffered = reactor.connectTCP(self.host, self.port, self.protocol_stack)
-        # self.deffered = reactor.connectSSL(self.host, self.port, StreamClientFactory(self.rq,self.wq),ssl.ClientContextFactory())
-        self.thread = threading.Thread(target=reactor.run, args=(False, ))
+        self.deferred = twisted.internet.reactor.connectTCP(self.host, self.port, self.protocol_stack)
+        # self.deferred = twisted.internet.reactor.connectSSL(self.host, self.port, StreamClientFactory(self.rq,self.wq),twisted.internet.ssl.ClientContextFactory())
+        self.thread = threading.Thread(target=twisted.internet.reactor.run, args=(False, ))
         self.thread.setDaemon(True)
         self.thread.start()
 
     def destroy(self):
-        reactor.stop()
+        twisted.internet.reactor.stop()
 
     def write(self, blocks):
         if self.rq.empty():

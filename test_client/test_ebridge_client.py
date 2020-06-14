@@ -15,7 +15,6 @@ import aimage.eater.bridge as bridge
 import logging
 
 
-
 def debug(*args, **kwargs):
     logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
 
@@ -155,8 +154,8 @@ def image2image():
         def on_disconnected(self):
             pass
 
-    c = bridge.client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
-    c.start()
+    client_socket = bridge.client.EaterBridgeClient(host="localhost", port=3000, protocol_stack=ProtocolStack)
+    client_socket.start()
 
     def terminate(a, b):
         c.destroy()
@@ -166,30 +165,51 @@ def image2image():
     signal.signal(signal.SIGTERM, terminate)
     request_count = 0
     fps_count = 0
+    fps = 0
     st = time.time()
+
+    import pyglview
+
     cap = aimage.open("~/test.mp4")
-    while True:
+    view = pyglview.Viewer(keyboard_listener=cap.keyboard_listener)
+
+    def loop():
+        nonlocal request_count, st, fps_count, cap, view, client_socket, fps
         if request_count < 2:
             if time.time() - st > 1.0:
-                info("FPS:", fps_count)
+                print("FPS:" + str(fps_count), flush=True)
+                print("\033[2A", flush=True)
+                fps = fps_count
                 st = time.time()
                 fps_count = 0
             fps_count += 1
 
             check, img = cap.read()
+
             if check:
-                debug("Fetch")
-                c.write([img])
+                #debug("Fetch")
+                client_socket.write([img])
                 request_count += 1
-        blocks = c.read()
+        blocks = client_socket.read()
         if blocks is not None:
             if isinstance(blocks, list):
                 for data in blocks:
-                    request_count -= 1
-                    aimage.show(data)
-                    debug("Show")
-        else:
-            time.sleep(0.01)
+                    data = np.array(data)
+                    #debug("Show")
+
+                    # def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
+                    # def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
+                    aimage.draw_footer(img=data, message="FPS:" + str(fps))
+                    # aimage.draw_title(img=data, message="FPS:" + str(fps))
+                    # aimage.draw_text(img=data, message="FPS:" + str(fps), x=5 + 1, y=25 * 2 + 2, color=(130, 50, 0), font_scale=2, font_type=2)
+                    # aimage.draw_text(img=data, message="FPS:" + str(fps), x=5, y=25 * 2, color=(255, 100, 0), font_scale=2, font_type=2)
+                    view.set_image(data)
+                    break
+                request_count -= len(blocks)
+
+    view.set_loop(loop)
+    view.start()
+    print("Main thread ended")
 
 
 if __name__ == "__main__":
@@ -203,7 +223,5 @@ if __name__ == "__main__":
     # print("\033[1K"+"".rjust(100)+"\033[1K")
     # print("!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", flush=True)
     # print("\033[2A", flush=True)
-
-
 
     pass

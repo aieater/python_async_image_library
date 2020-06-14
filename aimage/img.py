@@ -11,6 +11,8 @@ CCYAN = '\033[0;36m'
 CGREEN = '\033[0;32m'
 CRESET = '\033[0m'
 
+FONT_TYPE = [cv2.FONT_HERSHEY_COMPLEX_SMALL, cv2.FONT_HERSHEY_SIMPLEX, cv2.FONT_HERSHEY_TRIPLEX]
+
 
 def gamma(img, g):  # @public
     lookUpTable = np.empty((1, 256), np.uint8)
@@ -89,22 +91,20 @@ def draw_image_alpha(img, img_rgba, sx, sy):  # @public
     return img
 
 
-def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
+def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
     h, w, c = img.shape
     cv2.rectangle(img, (0, h), (w, h - 20), bg, -1)
-    fontScale = 1
-    cv2.putText(img, message, (5, h - 4), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+    cv2.putText(img, message, (5, h - 4), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
-def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55)):  # @public
+def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
     h, w, c = img.shape
     cv2.rectangle(img, (0, 0), (w, 20), bg, -1)
-    fontScale = 1
-    cv2.putText(img, message, (5, 17), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+    cv2.putText(img, message, (5, 17), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
-def draw_text(img, message, x=5, y=17, color=(255, 200, 55), fontScale=1):  # @public
-    cv2.putText(img, message, (x, y), cv2.FONT_HERSHEY_COMPLEX_SMALL, fontScale, color, 1, lineType=cv2.LINE_AA)
+def draw_text(img, message, x=5, y=17, color=(255, 200, 55), font_scale=1, font_type=0):  # @public
+    cv2.putText(img, message, (x, y), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
 def is_image_ext(f):  # @public
