@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 
-import json
-import os
 import signal
 import time
-import queue
 import sys
-import cv2
 import numpy as np
 
 import aimage
@@ -158,7 +154,7 @@ def image2image():
     client_socket.start()
 
     def terminate(a, b):
-        c.destroy()
+        client_socket.destroy()
         exit(9)
 
     signal.signal(signal.SIGINT, terminate)

@@ -127,6 +127,7 @@ class LengthSplitIn:  # Stream(socket) to Blocks
             # Has contents
             if len(buf) >= 4 + body_length:
                 head = self.buffer.read(4)
+                (head)
                 body = self.buffer.read(body_length)
                 # debug("LengthSplitIn:write:R", body)
                 self.blocks.append(body)

@@ -8,7 +8,7 @@ import uuid
 import twisted.internet.protocol
 import twisted.internet.reactor
 
-from ..bridge import protocol as bp
+from . import protocol as bridge_protocol
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -137,8 +137,8 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
 
     # Override
     def on_connected(self):
-        self.protocol_instance.add_input_protocol(bp.DirectStream())
-        self.protocol_instance.add_output_protocol(bp.DirectStream())
+        self.protocol_instance.add_input_protocol(bridge_protocol.DirectStream())
+        self.protocol_instance.add_output_protocol(bridge_protocol.DirectStream())
 
     def buildProtocol(self, addr):
         self.addr = addr

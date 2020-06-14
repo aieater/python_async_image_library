@@ -11,7 +11,8 @@ import twisted.internet.endpoints
 import twisted.internet.reactor
 import twisted.internet.ssl
 
-from ..bridge import protocol as bp
+from . import protocol as bridge_protocol
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -170,8 +171,8 @@ class StreamFactory(twisted.internet.protocol.Factory):
         self.update()
 
     def build_protocol_stack(self, s):
-        s.input_middlewares.append(bp.DirectStream())
-        s.output_middlewares.append(bp.DirectStream())
+        s.input_middlewares.append(bridge_protocol.DirectStream())
+        s.output_middlewares.append(bridge_protocol.DirectStream())
 
     def buildProtocol(self, addr):
         s = StackedServerSocketProtocol(self, addr)

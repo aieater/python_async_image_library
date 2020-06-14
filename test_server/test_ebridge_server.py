@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
-import json
 import logging
-import os
 import signal
 import sys
-import time
-from logging.handlers import TimedRotatingFileHandler
 
-import cv2
 import numpy as np
 from easydict import EasyDict as edict
 
@@ -55,7 +50,6 @@ args = edict()
 args.ssl = False
 args.crt = None
 args.key = None
-args.inference = "test"
 args.host = "localhost"
 args.port = 3000
 args.quality = 60
