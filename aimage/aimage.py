@@ -7,6 +7,7 @@ from aimage.stub_data_loader_od import *
 from aimage.stub_data_loader import *
 
 is_native = False
+is_available_native_queue = False
 
 try:
     from aimage_native import *

@@ -83,7 +83,7 @@ def rgb2bgr(img):  # @public
         raise "src image channel must be 3(RGB)"
     if img.dtype != np.uint8:
         raise "expected dtype is uint8."
-    return img[...,::-1]
+    return img[..., ::-1]
 
 
 def draw_image_alpha(img, img_rgba, sx, sy):  # @public
@@ -133,8 +133,8 @@ def opencv_decoder(data):
     else:
         raise Exception("Arg type must be bytes/bytearray/ndarray. Invalid arg:" + type(data))
     data = cv2.imdecode(nb, cv2.IMREAD_COLOR)
-    data = data[...,::-1]
-    
+    data = data[..., ::-1]
+
     return data
 
 
@@ -142,7 +142,7 @@ def opencv_encoder(data, **kargs):
     quality = 90
     if "quality" in kargs:
         quality = kargs["quality"]
-    data = data[...,::-1]
+    data = data[..., ::-1]
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check is False:
         raise "Invalid image data"
@@ -165,7 +165,7 @@ def _opencv_decoder_(data):
     b = data
     nb = np.asarray(b, dtype=np.uint8)
     data = cv2.imdecode(nb, cv2.IMREAD_COLOR)
-    data = data[...,::-1]
+    data = data[..., ::-1]
     return data
 
 
@@ -173,11 +173,47 @@ def _opencv_encoder_(data, **kargs):
     quality = 90
     if "quality" in kargs:
         quality = kargs["quality"]
-    data = data[...,::-1]
+    data = data[..., ::-1]
     check, data = cv2.imencode(".jpg", data, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # quality 1-100
     if check is False:
         raise "Invalid image data"
     return data
+
+
+def native_decoder(data):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_encoder(data, *, quality=90, format="jpg"):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_fast_decoder(data):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_fast_encoder(data, *, quality=90, format="jpg"):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_load_image(path):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_save_image(path, data, *, quality=90, format="jpg"):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_fast_load_image(path):
+    raise Exception("You must install aimage-native-ext")
+
+
+def native_fast_save_image(path, data, *, quality=90, format="jpg"):
+    compressed_data = native_module.fast_image_encoder(data, quality, format)
+    fp = _dopen(os.path.expanduser(path), "wb")
+    fp.write(compressed_data)
+    fp.close()
+    #return native_module.fast_image_encoder(path,data,quality,format)
 
 
 def decoder(data):  # @public
@@ -190,12 +226,12 @@ def encoder(data, **kargs):  # @public
 
 def load_image(path):  # @public
     img = cv2.imread(path)
-    img = img[...,::-1]
+    img = img[..., ::-1]
     return img
 
 
 def save_image(path, data, *, quality=90, format="jpg"):  # @public
-    data = data[...,::-1]
+    data = data[..., ::-1]
     return cv2.imwrite(path, data, [cv2.IMWRITE_JPEG_QUALITY, quality])
 
 
@@ -206,7 +242,7 @@ def load(path):  # @public
         if img is None:
             print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
             raise "Invalid file or invalid path."
-        return img[...,::-1]
+        return img[..., ::-1]
     print(CRED, "\n\nInvalid image file or invalid path. \"%s\"\n\n" % (path, ), CRESET)
     return None
 

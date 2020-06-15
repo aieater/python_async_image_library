@@ -83,7 +83,7 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
         #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
-        #info("TCP:READ:", data)
+        #debug("TCP:READ:", data[0:10])
         self.bandwidth_inbound += len(data)
         if self.is_available:
             self.input_middlewares[0].write(data)
@@ -129,7 +129,7 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
             if len(buf) > 0:
                 self.bandwidth_outbound += len(buf)
                 self.transport.write(buf)
-                #info("TCP:WRITE:", buf)
+                #debug("TCP:WRITE:", buf[0:10])
                 has_event += 1
         except Exception as e:
             warn(e)

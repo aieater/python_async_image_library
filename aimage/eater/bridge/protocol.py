@@ -4,6 +4,7 @@ import struct
 
 import numpy as np
 
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logger.setLevel(logging.DEBUG)
@@ -220,24 +221,30 @@ class ImageDecoder:  # Blocks to Blocks
         import aimage
         try:
             if aimage.is_native:
-                objs = []
-                for b in self.input_blocks:
-                    objs.append({"input_buffer": b, "id": self.req_index})
-                    self.req_index += 1
-                if len(objs) > 0: aimage.decode_input(objs, self.queue_name)
-                self.input_blocks = []
+                if aimage.is_available_native_queue:
+                    objs = []
+                    for b in self.input_blocks:
+                        objs.append({"input_buffer": b, "id": self.req_index})
+                        self.req_index += 1
+                    if len(objs) > 0: aimage.decode_input(objs, self.queue_name)
+                    self.input_blocks = []
 
-                ret = aimage.decode_output(self.queue_name)
-                if len(ret) > 0:
-                    for obj in ret:
-                        self.processing_map[obj["index"]] = obj
-                while True:
-                    obj = self.processing_map.pop(self.rcv_index, None)
-                    if obj:
-                        self.output_blocks.append(obj["data"])
-                        self.rcv_index += 1
-                    else:
-                        break
+                    ret = aimage.decode_output(self.queue_name)
+                    if len(ret) > 0:
+                        for obj in ret:
+                            self.processing_map[obj["index"]] = obj
+                    while True:
+                        obj = self.processing_map.pop(self.rcv_index, None)
+                        if obj:
+                            self.output_blocks.append(obj["data"])
+                            self.rcv_index += 1
+                        else:
+                            break
+                else:
+                    # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
+                    for b in self.input_blocks:
+                        self.output_blocks.append(aimage.native_fast_decoder(b)) # x3~x4 faster than OpenCV imdecode loader.
+                    self.input_blocks = []
             else:
                 # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
                 for b in self.input_blocks:
@@ -284,40 +291,47 @@ class ImageEncoder:  # Blocks to Blocks
         import aimage
         try:
             if aimage.is_native:
-                objs = []
-                for b in self.input_blocks:
-                    # encode_input:
+                if aimage.is_available_native_queue:
+                    objs = []
+                    for b in self.input_blocks:
+                        # encode_input:
+                        # [
+                        #   {
+                        #     id: int,
+                        #     input_buffer: ndarray,
+                        #   },
+                        # ]
+                        objs.append({"input_buffer": b, "id": self.req_index})
+                        # objs.append({"input_buffer": b, "id": self.req_index})
+                        self.req_index += 1
+                    if len(objs) > 0: aimage.encode_input(objs, self.quality, "jpg", self.queue_name)
+                    self.input_blocks = []
+
+                    ret = aimage.encode_output(self.queue_name)
+
+                    # encode_output:
                     # [
                     #   {
-                    #     id: int,
-                    #     input_buffer: ndarray,
+                    #     index: int
+                    #     data: ndarray,
                     #   },
                     # ]
-                    objs.append({"input_buffer": b, "id": self.req_index})
-                    # objs.append({"input_buffer": b, "id": self.req_index})
-                    self.req_index += 1
-                if len(objs) > 0: aimage.encode_input(objs, self.quality, "jpg", self.queue_name)
-                self.input_blocks = []
-
-                ret = aimage.encode_output(self.queue_name)
-
-                # encode_output:
-                # [
-                #   {
-                #     index: int
-                #     data: ndarray,
-                #   },
-                # ]
-                if len(ret) > 0:
-                    for obj in ret:
-                        self.processing_map[obj["index"]] = obj
-                while True:
-                    obj = self.processing_map.pop(self.rcv_index, None)
-                    if obj:
-                        self.output_blocks.append(obj["data"])
-                        self.rcv_index += 1
-                    else:
-                        break
+                    if len(ret) > 0:
+                        for obj in ret:
+                            self.processing_map[obj["index"]] = obj
+                    while True:
+                        obj = self.processing_map.pop(self.rcv_index, None)
+                        if obj:
+                            self.output_blocks.append(obj["data"])
+                            self.rcv_index += 1
+                        else:
+                            break
+                else:
+                    # for b in self.input_blocks: self.output_blocks.append(aimage.native_encoder(b))
+                    for b in self.input_blocks:
+                        self.output_blocks.append(aimage.native_fast_encoder(b))  # x3~x4 faster than OpenCV imdecode loader.
+                        # self.output_blocks.append(aimage.native_encoder(b, quality=self.quality, format="jpg"))
+                    self.input_blocks = []
             else:
                 # for b in self.input_blocks: self.output_blocks.append(aimage.native_encoder(b))
                 for b in self.input_blocks:

@@ -183,7 +183,7 @@ def image2image(quality=60):
             check, img = cap.read()
 
             if check:
-                #debug("Fetch")
+                # debug("Fetch")
                 client_socket.write([img])
                 request_count += 1
         blocks = client_socket.read()
@@ -191,7 +191,7 @@ def image2image(quality=60):
             if isinstance(blocks, list):
                 for data in blocks:
                     data = np.array(data)
-                    #debug("Show")
+                    # debug("Show")
 
                     # def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
                     # def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
