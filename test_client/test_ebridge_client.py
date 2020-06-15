@@ -137,11 +137,11 @@ def data2data():
             time.sleep(0.01)
 
 
-def image2image():
+def image2image(quality=60):
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
-            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=60))
+            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=quality))
             s.add_output_protocol(bridge.protocol.LengthSplitOut())
 
             s.add_input_protocol(bridge.protocol.LengthSplitIn())
@@ -166,7 +166,7 @@ def image2image():
 
     import pyglview
 
-    cap = aimage.open("~/test.mp4")
+    cap = aimage.open("~/test2.mp4")
     view = pyglview.Viewer(keyboard_listener=cap.keyboard_listener)
 
     def loop():
@@ -212,12 +212,4 @@ if __name__ == "__main__":
     #data2data()
     # echo()
     image2image()
-    # print("asdkfashdlkfashkdjfhasdlkfhasldkfhalk")
-    # print("\033[1K"+"".rjust(100)+"\033[1K")
-    # print("!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", flush=True)
-    # print("\033[2A", flush=True)
-    # print("\033[1K"+"".rjust(100)+"\033[1K")
-    # print("!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", flush=True)
-    # print("\033[2A", flush=True)
-
     pass

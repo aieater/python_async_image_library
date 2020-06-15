@@ -218,30 +218,34 @@ class ImageDecoder:  # Blocks to Blocks
 
     def update(self):
         import aimage
-        if False:
-            objs = []
-            for b in self.input_blocks:
-                objs.append({"input_buffer": b, "id": self.req_index})
-                self.req_index += 1
-            if len(objs) > 0: aimage.decode_input(objs, self.queue_name)
-            self.input_blocks = []
+        try:
+            if aimage.is_native:
+                objs = []
+                for b in self.input_blocks:
+                    objs.append({"input_buffer": b, "id": self.req_index})
+                    self.req_index += 1
+                if len(objs) > 0: aimage.decode_input(objs, self.queue_name)
+                self.input_blocks = []
 
-            ret = aimage.decode_output(self.queue_name)
-            if len(ret) > 0:
-                for obj in ret:
-                    self.processing_map[obj["index"]] = obj
-            while True:
-                obj = self.processing_map.pop(self.rcv_index, None)
-                if obj:
-                    self.output_blocks.append(obj["data"])
-                    self.rcv_index += 1
-                else:
-                    break
-        else:
-            # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
-            for b in self.input_blocks:
-                self.output_blocks.append(aimage.opencv_decoder(b))
-            self.input_blocks = []
+                ret = aimage.decode_output(self.queue_name)
+                if len(ret) > 0:
+                    for obj in ret:
+                        self.processing_map[obj["index"]] = obj
+                while True:
+                    obj = self.processing_map.pop(self.rcv_index, None)
+                    if obj:
+                        self.output_blocks.append(obj["data"])
+                        self.rcv_index += 1
+                    else:
+                        break
+            else:
+                # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
+                for b in self.input_blocks:
+                    self.output_blocks.append(aimage.opencv_decoder(b))
+                self.input_blocks = []
+        except Exception as e:
+            warn(e)
+            print(e)
 
     def info(self):
         return "ImageDecoder: Image data block <[<bytes>,]> => <[<ndarray>,]>"
@@ -278,30 +282,52 @@ class ImageEncoder:  # Blocks to Blocks
 
     def update(self):
         import aimage
-        if False:
-            objs = []
-            for b in self.input_blocks:
-                objs.append({"input_buffer": b, "id": self.req_index})
-                self.req_index += 1
-            if len(objs) > 0: aimage.encode_input(objs, self.quality, "jpg", self.queue_name)
-            self.input_blocks = []
+        try:
+            if aimage.is_native:
+                objs = []
+                for b in self.input_blocks:
+                    # encode_input:
+                    # [
+                    #   {
+                    #     id: int,
+                    #     input_buffer: ndarray,
+                    #   },
+                    # ]
+                    objs.append({"input_buffer": b, "id": self.req_index})
+                    # objs.append({"input_buffer": b, "id": self.req_index})
+                    self.req_index += 1
+                if len(objs) > 0: aimage.encode_input(objs, self.quality, "jpg", self.queue_name)
+                self.input_blocks = []
 
-            ret = aimage.encode_output(self.queue_name)
-            if len(ret) > 0:
-                for obj in ret:
-                    self.processing_map[obj["index"]] = obj
-            while True:
-                obj = self.processing_map.pop(self.rcv_index, None)
-                if obj:
-                    self.output_blocks.append(obj["data"])
-                    self.rcv_index += 1
-                else:
-                    break
-        else:
-            # for b in self.input_blocks: self.output_blocks.append(aimage.native_encoder(b))
-            for b in self.input_blocks:
-                self.output_blocks.append(aimage.opencv_encoder(b))
-            self.input_blocks = []
+                ret = aimage.encode_output(self.queue_name)
+
+                # encode_output:
+                # [
+                #   {
+                #     index: int
+                #     data: ndarray,
+                #   },
+                # ]
+                if len(ret) > 0:
+                    for obj in ret:
+                        self.processing_map[obj["index"]] = obj
+                while True:
+                    obj = self.processing_map.pop(self.rcv_index, None)
+                    if obj:
+                        self.output_blocks.append(obj["data"])
+                        self.rcv_index += 1
+                    else:
+                        break
+            else:
+                # for b in self.input_blocks: self.output_blocks.append(aimage.native_encoder(b))
+                for b in self.input_blocks:
+                    self.output_blocks.append(aimage.opencv_encoder(b))
+                self.input_blocks = []
+        except Exception as e:
+            print("Critical:", e)
+            warn(e)
+            exit(9)
+
 
     def info(self):
         return "ImageEncoder: Image data block <[<ndarray>,]> => <[<bytes>,]>"

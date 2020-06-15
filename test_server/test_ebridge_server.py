@@ -131,12 +131,12 @@ def data2data():
     sv.run()
 
 
-def image2image():
+def image2image(quality=60):
     class ProtocolStack(bridge.server.StreamFactory):
         def build_protocol_stack(self, s):
             s.add_input_protocol(bridge.protocol.LengthSplitIn())
             s.add_input_protocol(bridge.protocol.ImageDecoder())
-            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=60))
+            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=quality))
             s.add_output_protocol(bridge.protocol.LengthSplitOut())
             self.enable_info()
 

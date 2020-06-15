@@ -124,10 +124,14 @@ def is_image_ext(f):  # @public
 
 def opencv_decoder(data):
     b = data
-    if type(data) == np.ndarray:
+    if isinstance(data, np.ndarray):
         nb = data
-    else:
+    elif isinstance(data, bytes):
         nb = np.frombuffer(b, dtype=np.uint8)
+    elif isinstance(data, bytearray):
+        nb = np.frombuffer(b, dtype=np.uint8)
+    else:
+        raise Exception("Arg type must be bytes/bytearray/ndarray. Invalid arg:" + type(data))
     data = cv2.imdecode(nb, cv2.IMREAD_COLOR)
     data = data[...,::-1]
     

@@ -34,9 +34,9 @@ def info(*args, **kwargs):
     logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
-def estimate_retry_delay_time(r, max_delay=20):
-    s = math.exp(r)
-    return s if s < 20 else 20
+def estimate_retry_delay_time(r, max_delay=10):
+    s = math.exp(r / 1.5)
+    return s if s < 10 else 10
 
 
 class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
@@ -47,26 +47,26 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
         self.output_middlewares = []
         self.is_available = False
         self.is_invalid_socket = False
-        self.queue_name = "default"
+        self.uuid = str(uuid.uuid4())
 
     def add_input_protocol(self, p):
-        p.queue_name = self.queue_name
+        p.queue_name = self.uuid
         self.input_middlewares.append(p)
 
     def add_output_protocol(self, p):
-        p.queue_name = self.queue_name
+        p.queue_name = self.uuid
         self.output_middlewares.append(p)
 
     def connectionMade(self):
         import aimage
         if aimage.is_native:
-            aimage.create_queue(self.queue_name)
+            aimage.create_queue(self.uuid)
         self.is_available = True
 
     def connectionLost(self, reason):
         import aimage
         if aimage.is_native:
-            aimage.delete_queue(self.queue_name)
+            aimage.delete_queue(self.uuid)
         self.is_available = False
 
     def dataReceived(self, data):
@@ -77,6 +77,7 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
     def update(self):
         try:
             if self.is_invalid_socket: return
+            if self.is_available is False: return
             try:
                 # From opponent
                 for i in range(len(self.input_middlewares) - 1):
@@ -147,7 +148,6 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
         self.connected = True
         success(f'Connected {addr.type}://{addr.host}:{addr.port}')
         s = StackedClientSocketProtocol(self.rq, self.wq)
-        s.queue_name = str(uuid.uuid4())
         self.protocol_instance = s
         self.on_connected()
         return s

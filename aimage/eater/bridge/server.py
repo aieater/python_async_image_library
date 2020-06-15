@@ -39,10 +39,10 @@ def info(*args, **kwargs):
 
 
 class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
-    def __init__(self, factory, addr):
+    def __init__(self, global_factory, addr):
         super().__init__()
         self.addr = addr
-        self.factory = factory
+        self.global_factory = global_factory
         self.input_middlewares = []
         self.output_middlewares = []
         self.is_available = False
@@ -54,32 +54,32 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
         self.bandwidth_outbound = 0
         self.total_inbound = 0
         self.total_outbound = 0
-        self.queue_name = "default"
+        self.uuid = str(uuid.uuid4())
         self.description = ""
+        print("--------------------------------------")
 
     def add_input_protocol(self, p):
-        p.queue_name = self.queue_name
+        p.queue_name = self.uuid
         self.input_middlewares.append(p)
 
     def add_output_protocol(self, p):
-        p.queue_name = self.queue_name
+        p.queue_name = self.uuid
         self.output_middlewares.append(p)
 
     def connectionMade(self):
         import aimage
         if aimage.is_native:
-            aimage.create_queue(self.queue_name)
+            aimage.create_queue(self.uuid)
         self.is_available = True
-        self.uuid = str(uuid.uuid4())
-        self.factory.clients[self.uuid] = self
+        self.global_factory.clients[self.uuid] = self
         #print("C:" + str(self.addr))
 
     def connectionLost(self, reason):
         import aimage
         if aimage.is_native:
-            aimage.delete_queue(self.queue_name)
+            aimage.delete_queue(self.uuid)
         self.is_available = False
-        del self.factory.clients[self.uuid]
+        del self.global_factory.clients[self.uuid]
         #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
@@ -104,6 +104,8 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
             self.tm = time.time()
             self.bandwidth_inbound = 0
             self.bandwidth_outbound = 0
+        if self.is_available is False: return
+
         try:
             # From clients
             for i in range(len(self.input_middlewares) - 1):
@@ -171,8 +173,8 @@ class StreamFactory(twisted.internet.protocol.Factory):
         self.update()
 
     def build_protocol_stack(self, s):
-        s.input_middlewares.append(bridge_protocol.DirectStream())
-        s.output_middlewares.append(bridge_protocol.DirectStream())
+        s.add_input_protocol(bridge_protocol.DirectStream())
+        s.add_output_protocol(bridge_protocol.DirectStream())
 
     def buildProtocol(self, addr):
         s = StackedServerSocketProtocol(self, addr)
