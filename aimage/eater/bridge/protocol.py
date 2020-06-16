@@ -4,13 +4,13 @@ import struct
 
 import numpy as np
 
-
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logger.setLevel(logging.DEBUG)
 logger.propagate = True
 
 DEBUG = False
+
 
 
 def debug(*args, **kwargs):
@@ -243,7 +243,7 @@ class ImageDecoder:  # Blocks to Blocks
                 else:
                     # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
                     for b in self.input_blocks:
-                        self.output_blocks.append(aimage.native_fast_decoder(b)) # x3~x4 faster than OpenCV imdecode loader.
+                        self.output_blocks.append(aimage.native_fast_decoder(b))  # x3~x4 faster than OpenCV imdecode loader.
                     self.input_blocks = []
             else:
                 # for b in self.input_blocks: self.output_blocks.append(aimage.native_decoder(b))
@@ -341,7 +341,6 @@ class ImageEncoder:  # Blocks to Blocks
             print("Critical:", e)
             warn(e)
             exit(9)
-
 
     def info(self):
         return "ImageEncoder: Image data block <[<ndarray>,]> => <[<bytes>,]>"

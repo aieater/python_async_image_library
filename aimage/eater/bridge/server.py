@@ -2,17 +2,22 @@
 import datetime
 import logging
 import multiprocessing
+import queue
+import re
+import shutil
+import subprocess
+import threading
 import time
 import uuid
 
 import numpy as np
-import twisted.internet.protocol
+import psutil
 import twisted.internet.endpoints
+import twisted.internet.protocol
 import twisted.internet.reactor
 import twisted.internet.ssl
 
 from . import protocol as bridge_protocol
-
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -38,6 +43,99 @@ def info(*args, **kwargs):
     logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
+#################################################################################
+# Util
+
+cpu_usage = 0
+gpu_usages = []
+resource_watcher_queue = queue.Queue()
+resource_watcher_thread = None
+
+
+def resource_watcher(q):
+    tm = time.time()
+    ROCM_SMI = shutil.which('rocm-smi')
+    NVIDIA_SMI = shutil.which('nvidia-smi')
+    while True:
+        try:
+            if time.time() - tm > 2.0:
+                if NVIDIA_SMI:
+                    try:
+                        a = subprocess.check_output("nvidia-smi | grep MiB | grep Default", shell=True).decode("utf-8")
+                        if "MiB" in a:
+                            index = 0
+                            sp = a.split("\n")
+                            # canvas = np.zeros((128, 256, 3), dtype=np.uint8)
+                            cpu_usage = psutil.cpu_percent()
+                            # aimage.draw_text(canvas, "CPU: {}%".format(rpad(str(cpu_usage), 4)), 5, 20 + 20 * index)
+                            gpu_usages = []
+                            for b in sp:
+                                if "Default" in b:
+                                    usage = b.split("|")[3].replace("Default", "").strip()
+                                    memory = b.split("|")[2].split("/")[0].strip()
+                                    # mes = "{} {} {}".format(index, rpad(usage, 4), rpad(memory, 10))
+                                    gpu_usages += [[index, usage, memory]]
+                                    # aimage.draw_text(canvas, mes, 5, 20 + 20 * (index + 1))
+                                    index += 1
+                            # aimage.save_image(os.path.join(os.path.dirname(__file__), ".gpu.jpg"), canvas)
+                            q.put((cpu_usage, gpu_usages))
+                    except Exception as e:
+                        pass
+                if ROCM_SMI:
+                    try:
+                        a = subprocess.check_output("rocm-smi | grep Mhz", shell=True).decode("utf-8")
+                        if "Mhz" in a:
+                            # GPU  Temp   AvgPwr  SCLK    MCLK    Fan     Perf  PwrCap  VRAM%  GPU%
+                            # 0    33.0c  18.0W   808Mhz  350Mhz  21.96%  auto  250.0W    0%   0
+                            index = 0
+                            sp = a.split("\n")
+                            # canvas = np.zeros((128, 256, 3), dtype=np.uint8)
+                            cpu_usage = psutil.cpu_percent()
+                            # aimage.draw_text(canvas, "CPU: {}%".format(rpad(str(cpu_usage), 4)), 5, 20 + 20 * index)
+                            gpu_usages = []
+                            for b in sp:
+                                if "Mhz" in b:
+                                    ss = re.findall(r"\S+", b)
+                                    gpu_indx = ss[0]
+                                    temp = ss[1]
+                                    avgpwr = ss[2]
+                                    sclk = ss[3]
+                                    mclk = ss[4]
+                                    fan = ss[5]
+                                    perf = ss[6]
+                                    pwrcap = ss[7]
+                                    vram = ss[8]
+                                    gpu_usage = ss[9]
+                                    gpu_mem = vram
+                                    if len(ss) == 11:
+                                        gpu_mem = ss[10]
+                                    # mes = "{} {} {}".format(index, rpad(usage, 4), rpad(memory, 10))
+                                    gpu_usages += [[gpu_indx, gpu_usage, gpu_mem]]
+                                    # aimage.draw_text(canvas, mes, 5, 20 + 20 * (index + 1))
+                                    index += 1
+                            # aimage.save_image(os.path.join(os.path.dirname(__file__), ".gpu.jpg"), canvas)
+                            q.put((cpu_usage, gpu_usages))
+                    except Exception as e:
+                        pass
+                tm = time.time()
+            else:
+                time.sleep(0.5)
+        except Exception as e:
+            time.sleep(0.5)
+
+
+def gpu_log():
+    global cpu_usage, gpu_usages, resource_watcher_thread, resource_watcher_queue
+    if resource_watcher_thread is None:
+        resource_watcher_thread = threading.Thread(name="gpu_log", target=resource_watcher, args=(resource_watcher_queue, ), daemon=True)
+        resource_watcher_thread.start()
+    try:
+        cpu_usage, gpu_usages = resource_watcher_queue.get_nowait()
+    except:
+        pass
+    return cpu_usage, gpu_usages
+
+
 class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
     def __init__(self, global_factory, addr):
         super().__init__()
@@ -56,7 +154,6 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
         self.total_outbound = 0
         self.uuid = str(uuid.uuid4())
         self.description = ""
-        print("--------------------------------------")
 
     def add_input_protocol(self, p):
         p.queue_name = self.uuid
@@ -169,7 +266,7 @@ class StreamFactory(twisted.internet.protocol.Factory):
         self.previous_max_socket_num = 0
         self.enabled_info = False
         self.clients = {}
-        self.log_tm = 0
+        self.log_tm = time.time() + 1.0
         self.update()
 
     def build_protocol_stack(self, s):
@@ -211,14 +308,27 @@ class StreamFactory(twisted.internet.protocol.Factory):
         t = time.time()
         if t - self.log_tm > 1.0:
             self.log_tm = t
+            cpu_usage, gpu_usages = gpu_log()
+            mem = psutil.virtual_memory()
+            cpu_res = 'C:{}% '.format(cpu_usage)
+            gpu_ress = []
+            for g in gpu_usages:
+                gpu_ress += ['G({}:{}:{})'.format(g[0], g[1], g[2])]
+            mresources = '[{}M:{:.2f}MB({}%)] [{}]'.format(cpu_res, mem.used / 1024 / 1024, mem.percent, ",".join(gpu_ress))
+            print("\033[0K", end="", flush=True)
+            print(mresources, flush=True)
             if self.enabled_info:
-                for k in range(self.previous_max_socket_num):
-                    print("\033[2A", flush=True)
-                    print("\033[0K", end="\r")
-                if len(self.clients) > 0:
-                    for k in self.clients:
-                        print(self.clients[k].description, flush=True)
-                self.previous_max_socket_num = len(self.clients)
+                for k in self.clients:
+                    print("\033[0K", end="", flush=True)
+                    print(self.clients[k].description, flush=True)
+                clen = len(self.clients.keys())
+                if self.previous_max_socket_num > clen:
+                    for i in range(self.previous_max_socket_num - clen):
+                        print("\033[0K", end="\n", flush=True)
+                for k in range(max(self.previous_max_socket_num, clen)):
+                    print("\033[1A", end="\r", flush=True)
+                self.previous_max_socket_num = clen
+            print("\033[1A", end="\r", flush=True)
         twisted.internet.reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 

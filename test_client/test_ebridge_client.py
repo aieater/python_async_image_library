@@ -6,6 +6,7 @@ import sys
 import numpy as np
 
 import aimage
+aimage.is_available_native_queue = True
 
 import aimage.eater.bridge as bridge
 import logging
