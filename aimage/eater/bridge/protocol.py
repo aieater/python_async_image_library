@@ -226,7 +226,8 @@ class ImageDecoder:  # Blocks to Blocks
                     for b in self.input_blocks:
                         objs.append({"input_buffer": b, "id": self.req_index})
                         self.req_index += 1
-                    if len(objs) > 0: aimage.decode_input(objs, self.queue_name)
+                    if len(objs) > 0:
+                        aimage.decode_input(objs, self.queue_name)
                     self.input_blocks = []
 
                     ret = aimage.decode_output(self.queue_name)

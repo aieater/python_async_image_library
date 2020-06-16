@@ -4,7 +4,7 @@ import logging
 import signal
 import sys
 import aimage
-aimage.is_available_native_queue = True
+#aimage.is_available_native_queue = True
 
 import numpy as np
 from easydict import EasyDict as edict
