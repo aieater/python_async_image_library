@@ -3,7 +3,7 @@ import sys, os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-version = '1.2.7'
+version = '1.2.8'
 
 install_requires = [
     'mss',
@@ -15,6 +15,8 @@ install_requires = [
     'acapture',
     'twisted',
     'tqdm',
+    'numpy',
+    'psutil',
     'easydict',
     'service_identity',
 ]
@@ -40,7 +42,7 @@ setup(name='aimage',
     author_email='support@pegara.com',
     url='https://github.com/aieater/python_async_image_library',
     license='MIT',
-    packages=['aimage'],
+    packages=['aimage','aimage.eater.bridge', 'aimage.eater.application'],
     zip_safe=False,
     install_requires=install_requires,
     entry_points={}

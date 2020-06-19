@@ -37,11 +37,6 @@ def setup_log(name=__name__, level=logging.DEBUG):
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(message)s"))
     logger.addHandler(handler)
-    # logger.info("info")
-    # logger.debug("debug")
-    # logger.warning("warning")
-    # logger.error("error")
-    # logger.critical("critical")
     return logger
 
 
@@ -52,7 +47,7 @@ args = edict()
 args.ssl = False
 args.crt = None
 args.key = None
-args.host = "localhost"
+args.host = "::0"
 args.port = 3000
 args.quality = 60
 
@@ -167,6 +162,41 @@ def image2image(quality=60):
                 self.setDataBlocksFromArray(stored_datablocks)
             return len(new_data)
 
+
+def image2data(quality=60):
+    class ProtocolStack(bridge.server.StreamFactory):
+        def build_protocol_stack(self, s):
+            s.add_input_protocol(bridge.protocol.LengthSplitIn())
+            s.add_input_protocol(bridge.protocol.ImageDecoder())
+            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=quality))
+            s.add_output_protocol(bridge.protocol.LengthSplitOut())
+            self.enable_info()
+
+    class Server(bridge.server.EaterBridgeServer):
+        def __init__(self, **kargs):
+            super().__init__(**kargs)
+            self.data_queue = []
+            self.model = None
+
+        def update(self):
+            if self.model is None:
+                import evaluator
+                self.model = evaluator.Evaluator()
+            new_data = self.getDataBlocksAsArray()
+            self.data_queue += new_data
+            if len(self.data_queue) > 0:
+                batch_data, socket_mapper, self.data_queue = bridge.server.slice_as_batch_size(self.data_queue, 128)
+                #debug("EchoServer:update", self.data_queue, batch_data)
+                batch_data = np.uint8(batch_data)
+                for i in range(len(batch_data)):
+                    img = batch_data[i]
+                    r_image = self.model.eval(img)
+                    batch_data[i] = r_image
+
+                stored_datablocks = bridge.server.pack_array_datablock(socket_mapper, batch_data)
+                self.setDataBlocksFromArray(stored_datablocks)
+            return len(new_data)
+
     args.protocol_stack = ProtocolStack
     sv = Server(**args.__dict__)
 
@@ -182,4 +212,5 @@ def image2image(quality=60):
 if __name__ == "__main__":
     # echo()
     # data2data()
-    image2image()
+    # image2image()
+    image2data()
