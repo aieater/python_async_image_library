@@ -17,7 +17,11 @@ import twisted.internet.protocol
 import twisted.internet.reactor
 import twisted.internet.ssl
 
-from . import protocol as bridge_protocol
+try:
+    from . import protocol as bridge_protocol
+except Exception as e:
+    print(e)
+    import protocol as bridge_protocol
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -352,7 +356,7 @@ def pack_array_datablock(socket_mapper, modified_data):
     return dst_mapper
 
 
-class EaterBridgeServer(object):
+class EaterBridgeServer():
     def getDataBlocksAsArray(self, size=-1):
         try:
             if self.input_queue.empty() is False:
@@ -377,7 +381,7 @@ class EaterBridgeServer(object):
     #     return self.factory.getDataBlocksAsArray(size)
     # def setDataBlocksFromArray(self,a):
     #     self.factory.setDataBlocksFromArray(a)
-    def __init__(self, **kargs):
+    def __init__(self, kargs):
         self.input_queue = multiprocessing.Queue()
         self.output_queue = multiprocessing.Queue()
         self.signal_queue_r = multiprocessing.Queue()
@@ -443,9 +447,11 @@ class EaterBridgeServer(object):
             __update__()
             twisted.internet.reactor.run(False)
 
+        #runner(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w)
+        #multiprocessing.set_start_method('spawn', True)
         self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         self.thread.start()
-        # self.thread = threading.Thread(target=runner,args=(self.input_queue,self.output_queue),daemon=True)
+        # self.thread = threading.Thread(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         # self.thread.start()
 
         # self.thread = multiprocessing.Process(target=reactor.run,args=(False,),daemon=True)
@@ -469,3 +475,51 @@ class EaterBridgeServer(object):
             has_event = self.update()
             if has_event == 0:
                 time.sleep(0.01)
+
+
+if __name__ == "__main__":
+    from easydict import EasyDict as edict
+    import signal
+
+    class ProtocolStack(StreamFactory):
+        def build_protocol_stack(self, s):
+            s.add_input_protocol(bridge_protocol.LengthSplitIn())
+            s.add_input_protocol(bridge_protocol.ImageDecoder())
+            s.add_output_protocol(bridge_protocol.ImageEncoder(quality=args.quality))
+            s.add_output_protocol(bridge_protocol.LengthSplitOut())
+            self.enable_info()
+
+    class Server(EaterBridgeServer):
+        def __init__(self, **kargs):
+            super().__init__(kargs)
+            self.data_queue = []
+            self.model = None
+
+        def update(self):
+            new_data = self.getDataBlocksAsArray()
+            self.data_queue += new_data
+            if len(self.data_queue) > 0:
+                batch_data, socket_mapper, self.data_queue = slice_as_batch_size(self.data_queue, 4)
+                #self.model.eval(batch_data)
+                stored_datablocks = pack_array_datablock(socket_mapper, batch_data)
+                self.setDataBlocksFromArray(stored_datablocks)
+            return len(new_data)
+
+    args = edict()
+    args.ssl = False
+    args.crt = None
+    args.key = None
+    args.host = "::0"
+    args.port = 4649
+    args.quality = 60
+
+    args.protocol_stack = ProtocolStack
+    sv = Server(**args.__dict__)
+
+    def terminate(a, b):
+        sv.destroy()
+        exit(9)
+
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
+    sv.run()

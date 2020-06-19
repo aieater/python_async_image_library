@@ -1,37 +1,23 @@
 #!/usr/bin/env python3
 
-import os
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import logging
+import os
 import signal
 import sys
 import time
 
-import aimage
-import aimage.eater.bridge as bridge
+import cselector
 import numpy as np
 import psutil
 
-import cselector
-
-
+import aimage
 #aimage.is_available_native_queue = True
+import aimage.eater.bridge as bridge
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
-def debug(*args, **kwargs):
-    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
 
-
-def success(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
-
-
-def warn(*args, **kwargs):
-    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
-
-
-def info(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
 
 
 def setup_log(name=__name__, level=logging.DEBUG):
@@ -44,102 +30,11 @@ def setup_log(name=__name__, level=logging.DEBUG):
     return logger
 
 
-# img = aimage.load("/Volumes/Untitled/m/BLOCK_22105451468000808_4cdf10110ef745499a868b4769328135.jpg")
-# img = aimage.resize(img, 1024)
-# while True:
-#     aimage.show(img)
-#     aimage.wait(110)
-
 setup_log("aimage.eater.bridge", level=logging.DEBUG)
 logger = setup_log(__name__, logging.DEBUG)
 
 
-def echo(HOST, PORT):
-    class ProtocolStack(bridge.client.StreamClientFactory):
-        def on_connected(self):
-            s = self.protocol_instance
-            s.add_input_protocol(bridge.protocol.DirectStream())
-            s.add_output_protocol(bridge.protocol.DirectStream())
-
-        def on_disconnected(self):
-            pass
-
-    c = bridge.client.EaterBridgeClient(host=HOST, port=PORT, protocol_stack=ProtocolStack)
-    c.start()
-
-    def terminate(a, b):
-        c.destroy()
-        exit(9)
-
-    signal.signal(signal.SIGINT, terminate)
-    signal.signal(signal.SIGTERM, terminate)
-    request_count = 0
-    index = 0
-    while True:
-        if request_count < 1:
-            s = str(index)
-            c.write(s)
-            request_count += len(s)
-            index += 1
-        data = c.read()
-        if isinstance(data, bytes) or isinstance(data, bytearray):
-            print(data)
-            request_count -= len(data)
-        else:
-            time.sleep(0.01)
-
-
-def data2data(HOST, PORT):
-    class ProtocolStack(bridge.client.StreamClientFactory):
-        def on_connected(self):
-            s = self.protocol_instance
-            s.add_input_protocol(bridge.protocol.LengthSplitIn())
-            s.add_output_protocol(bridge.protocol.LengthSplitOut())
-
-        def on_disconnected(self):
-            pass
-
-    c = bridge.client.EaterBridgeClient(host=HOST, port=PORT, protocol_stack=ProtocolStack)
-    c.start()
-
-    def terminate(a, b):
-        c.destroy()
-        exit(9)
-
-    signal.signal(signal.SIGINT, terminate)
-    signal.signal(signal.SIGTERM, terminate)
-    request_count = 0
-    fps_count = 0
-    st = time.time()
-    while True:
-        if request_count < 2:
-            if time.time() - st > 1.0:
-                info("FPS:", fps_count)
-                st = time.time()
-                fps_count = 0
-            fps_count += 1
-
-            datas = ["test", "test2"]
-            info(f"Main:send({request_count}):", datas)
-            c.write(datas)
-            request_count += 2
-        blocks = c.read()
-        if blocks is not None:
-            if isinstance(blocks, list):
-                for data in blocks:
-                    request_count -= 1
-                    # TODO list / bytes
-                    info(f"Main:response({request_count}):", data.decode('utf-8'))
-                    # for data in extend:
-                    #     print(data.decode('utf-8'))
-                    # blocks = client.read()
-                    # for img in blocks:
-                    #     aimage.show(img)
-        else:
-            time.sleep(0.01)
-
-
-def image2image(HOST, PORT, fd="~/test.mp4", quality=60):
+def image2image(HOST, PORT, fd, quality=60):
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
@@ -195,7 +90,7 @@ def image2image(HOST, PORT, fd="~/test.mp4", quality=60):
             check, img = cap.read()
 
             if check:
-                # debug("Fetch")
+                # logger.debug("Fetch")
                 client_socket.write([img])
                 request_count += 1
                 req_fps_count += 1
@@ -204,7 +99,7 @@ def image2image(HOST, PORT, fd="~/test.mp4", quality=60):
             if isinstance(blocks, list):
                 for data in blocks:
                     data = np.array(data)
-                    # debug("Show")
+                    # logger.debug("Show")
 
                     # def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
                     # def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
@@ -221,7 +116,7 @@ def image2image(HOST, PORT, fd="~/test.mp4", quality=60):
     print("Main thread ended")
 
 
-def image2data(HOST, PORT, fd="~/test.mp4", quality=60):
+def image2data(HOST, PORT, fd, quality=60):
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
             s = self.protocol_instance
@@ -229,8 +124,7 @@ def image2data(HOST, PORT, fd="~/test.mp4", quality=60):
             s.add_output_protocol(bridge.protocol.LengthSplitOut())
 
             s.add_input_protocol(bridge.protocol.LengthSplitIn())
-            s.add_input_protocol(bridge.protocol.ImageDecoder())
-
+            
         def on_disconnected(self):
             pass
 
@@ -277,7 +171,7 @@ def image2data(HOST, PORT, fd="~/test.mp4", quality=60):
             check, img = cap.read()
 
             if check:
-                # debug("Fetch")
+                # logger.debug("Fetch")
                 client_socket.write([img])
                 request_count += 1
                 req_fps_count += 1
@@ -286,7 +180,7 @@ def image2data(HOST, PORT, fd="~/test.mp4", quality=60):
             if isinstance(blocks, list):
                 for data in blocks:
                     data = np.array(data)
-                    # debug("Show")
+                    # logger.debug("Show")
 
                     # def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
                     # def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
@@ -306,8 +200,10 @@ def image2data(HOST, PORT, fd="~/test.mp4", quality=60):
 if __name__ == "__main__":
     # cselector.selector(["image2image", "image2json"])
 
+    #HOST = "localhost"
     HOST = "240d:1a:1c6:2400:216:3eff:fec8:25e8"
     PORT = 6000
-    FD = "~/test.mp4" # 0 = Camera, -1 = Screen, filepath => video, images...
+    # PORT = 4649
+    FD = "~/test.mp4"  # 0 = Camera, -1 = Screen, filepath => video, images...
     image2image(HOST, PORT, FD)
     # image2data()

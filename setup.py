@@ -3,7 +3,7 @@ import sys, os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-version = '1.2.8'
+version = '1.3.0'
 
 install_requires = [
     'mss',
@@ -11,6 +11,7 @@ install_requires = [
     #'pygame',
     'configparser',
     'imgcat',
+    'termios',
     #'PyOpenGL',
     'acapture',
     'twisted',

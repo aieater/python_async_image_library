@@ -6,6 +6,7 @@ import importlib
 import multiprocessing
 import os
 import platform
+import queue
 import sys
 import termios
 import threading
@@ -14,15 +15,10 @@ import time
 import cv2
 import numpy as np
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
 
 def _ipython_imshow_(image):
     import IPython.display
-    image = image[...,::-1]
+    image = image[..., ::-1]
     check, img = cv2.imencode(".png", image)
     decoded_bytes = img.tobytes()
     IPython.display.display(IPython.display.Image(data=decoded_bytes))
@@ -112,6 +108,7 @@ if importlib.util.find_spec("acapture"):
 
     open = acapture.open  # @public
 else:
+    print("Could not support video.")
     print("pip3 install pygame acapture")
 
 __front_flag_for_opencv_problem__ = False
@@ -119,7 +116,7 @@ __front_flag_for_opencv_problem__ = False
 
 def _cv2_imshow_(mes, image):
     global __front_flag_for_opencv_problem__
-    image = image[...,::-1]
+    image = image[..., ::-1]
     cv2.imshow(mes, image)
     ret = cv2.waitKey(1)
     if __front_flag_for_opencv_problem__ is False:
@@ -189,8 +186,8 @@ class _key_observer_:
                 while True:
                     n = ord(sys.stdin.read(1))
                     q.put(n)
-            except:
-                print("Error")
+            except Exception as e:
+                print("Error:" + str(e))
                 pass
 
     def __init__(self):
