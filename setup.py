@@ -6,13 +6,13 @@ here = os.path.abspath(os.path.dirname(__file__))
 version = '1.3.2'
 
 install_requires = [
-    'mss',
+    # 'termios',
     #'opencv-python',
     #'pygame',
     #'PyOpenGL',
+    'mss',
     'configparser',
     'imgcat',
-    'termios',
     'acapture',
     'twisted',
     'tqdm',
