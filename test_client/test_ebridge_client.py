@@ -200,10 +200,10 @@ def image2data(HOST, PORT, fd, quality=60):
 if __name__ == "__main__":
     # cselector.selector(["image2image", "image2json"])
 
-    #HOST = "localhost"
-    HOST = "240d:1a:1c6:2400:216:3eff:fec8:25e8"
-    PORT = 6000
-    # PORT = 4649
+    HOST = "localhost"
+    # HOST = "240d:1a:1c6:2400:216:3eff:fec8:25e8"
+    # PORT = 4000
+    PORT = 4649
     FD = "~/test.mp4"  # 0 = Camera, -1 = Screen, filepath => video, images...
     image2image(HOST, PORT, FD)
     # image2data()

@@ -8,7 +8,6 @@ import os
 import platform
 import queue
 import sys
-import termios
 import threading
 import time
 
@@ -169,6 +168,11 @@ def clear_output():  # @public
 
 
 class _key_observer_:
+    try:
+        import termios
+    except Exception as e:
+        print(e)
+        print("pip3 install termios")
     def __th_observe_key__(q):
         @contextlib.contextmanager
         def raw_mode(file):

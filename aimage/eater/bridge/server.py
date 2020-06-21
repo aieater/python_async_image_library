@@ -2,6 +2,9 @@
 import datetime
 import logging
 import multiprocessing
+import os
+import sys
+import platform
 import queue
 import re
 import shutil
@@ -17,34 +20,29 @@ import twisted.internet.protocol
 import twisted.internet.reactor
 import twisted.internet.ssl
 
-try:
-    from . import protocol as bridge_protocol
-except Exception as e:
-    print(e)
-    import protocol as bridge_protocol
+if platform.platform() == "Darwin":
+    os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
-logger.setLevel(logging.DEBUG)
-logger.propagate = True
-
-DEBUG = False
-
-
-def debug(*args, **kwargs):
-    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
-
-
-def success(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
-
-
-def warn(*args, **kwargs):
-    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
+if __name__ == "__main__":
+    import protocol as bridge_protocol
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
+else:
+    from . import protocol as bridge_protocol
+    logger.addHandler(logging.NullHandler())
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
 
 
-def info(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
+
+
+
+
 
 
 #################################################################################
@@ -184,7 +182,7 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
         #print("D:" + str(self.addr) + str(reason))
 
     def dataReceived(self, data):
-        #debug("TCP:READ:", data[0:10])
+        #logger.debug("TCP:READ:", data[0:10])
         self.bandwidth_inbound += len(data)
         if self.is_available:
             self.input_middlewares[0].write(data)
@@ -230,15 +228,15 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
             if len(buf) > 0:
                 self.bandwidth_outbound += len(buf)
                 self.transport.write(buf)
-                #debug("TCP:WRITE:", buf[0:10])
+                #logger.debug("TCP:WRITE:", buf[0:10])
                 has_event += 1
         except Exception as e:
-            warn(e)
+            logger.warning(e)
             try:
                 self.transport.close()
                 has_event += 1
             except Exception as e:
-                warn(e)
+                logger.warning(e)
                 pass
         return has_event
 
@@ -309,19 +307,19 @@ class StreamFactory(twisted.internet.protocol.Factory):
         for k in self.clients:
             client_socket = self.clients[k]
             has_event += client_socket.update()
-        t = time.time()
-        if t - self.log_tm > 1.0:
-            self.log_tm = t
-            cpu_usage, gpu_usages = gpu_log()
-            mem = psutil.virtual_memory()
-            cpu_res = 'C:{}% '.format(cpu_usage)
-            gpu_ress = []
-            for g in gpu_usages:
-                gpu_ress += ['G({}:{}:{})'.format(g[0], g[1], g[2])]
-            mresources = '[{}M:{:.2f}MB({}%)] [{}]'.format(cpu_res, mem.used / 1024 / 1024, mem.percent, ",".join(gpu_ress))
-            print("\033[0K", end="", flush=True)
-            print(mresources, flush=True)
-            if self.enabled_info:
+        if self.enabled_info:
+            t = time.time()
+            if t - self.log_tm > 1.0:
+                self.log_tm = t
+                cpu_usage, gpu_usages = gpu_log()
+                mem = psutil.virtual_memory()
+                cpu_res = 'C:{}% '.format(cpu_usage)
+                gpu_ress = []
+                for g in gpu_usages:
+                    gpu_ress += ['G({}:{}:{})'.format(g[0], g[1], g[2])]
+                mresources = '[{}M:{:.2f}MB({}%)] [{}]'.format(cpu_res, mem.used / 1024 / 1024, mem.percent, ",".join(gpu_ress))
+                print("\033[0K", end="", flush=True)
+                print(mresources, flush=True)
                 for k in self.clients:
                     print("\033[0K", end="", flush=True)
                     print(self.clients[k].description, flush=True)
@@ -332,7 +330,7 @@ class StreamFactory(twisted.internet.protocol.Factory):
                 for k in range(max(self.previous_max_socket_num, clen)):
                     print("\033[1A", end="\r", flush=True)
                 self.previous_max_socket_num = clen
-            print("\033[1A", end="\r", flush=True)
+                print("\033[1A", end="\r", flush=True)
         twisted.internet.reactor.callLater(0.001 if has_event > 0 else 0.02, self.update)
 
 
@@ -363,7 +361,7 @@ class EaterBridgeServer():
                 obj = self.input_queue.get_nowait()
                 return obj
         except Exception as e:
-            warn(e)
+            logger.warning(e)
             pass
         return []
 
@@ -372,7 +370,7 @@ class EaterBridgeServer():
             if self.output_queue.full() is False:
                 self.output_queue.put_nowait(a)
         except Exception as e:
-            warn(e)
+            logger.warning(e)
             return False
         return True
 
@@ -392,7 +390,7 @@ class EaterBridgeServer():
         if "host" not in kargs:
             raise Exception("Required parameter: host was None")
 
-        info("Start server", "tcp:" + str(kargs["port"]))
+        logger.info("Start server tcp:" + str(kargs["port"]))
         parameter_block = []
         protocol = "tcp"
         if "ssl" in kargs and kargs["ssl"]:
@@ -413,7 +411,7 @@ class EaterBridgeServer():
         else:
             raise Exception("protocol_stack is required.")
         parameter = ":".join(parameter_block)
-        info(parameter)
+        logger.info(parameter)
         twisted.internet.endpoints.serverFromString(twisted.internet.reactor, parameter).listen(self.factory)
 
         def runner(input_queue, output_queue, signal_queue_r, signal_queue_w):
@@ -428,7 +426,7 @@ class EaterBridgeServer():
                             input_queue.put_nowait(obj)
                             has_event += 1
                 except Exception as e:
-                    warn(e)
+                    logger.warning(e)
                     pass
                 try:
                     if output_queue.empty() is False:
@@ -440,7 +438,7 @@ class EaterBridgeServer():
                         # End of application
                         return
                 except Exception as e:
-                    warn(e)
+                    logger.warning(e)
                     pass
                 twisted.internet.reactor.callLater(0.001 if has_event > 0 else 0.02, __update__)
 
@@ -468,7 +466,7 @@ class EaterBridgeServer():
             self.signal_queue_r.put_nowait(None)
             self.signal_queue_w.get()
         except Exception as e:
-            warn(e)
+            logger.warning(e)
 
     def run(self):
         while True:

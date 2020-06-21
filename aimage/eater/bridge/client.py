@@ -1,35 +1,33 @@
 #!/usr/bin/env python3
 import logging
 import math
+import os
+import platform
 import queue
+import sys
 import threading
 import uuid
 
 import twisted.internet.protocol
 import twisted.internet.reactor
 
-from . import protocol as bridge_protocol
+if platform.platform() == "Darwin":
+    os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
-logger.setLevel(logging.DEBUG)
-logger.propagate = True
-
-
-def debug(*args, **kwargs):
-    logger.debug(" ".join([str(s) for s in ['\033[1;30m', *args, '\033[0m']]), **kwargs)
-
-
-def success(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;32m', *args, '\033[0m']]), **kwargs)
-
-
-def warn(*args, **kwargs):
-    logger.warning(" ".join([str(s) for s in ['\033[0;31m', *args, '\033[0m']]), **kwargs)
-
-
-def info(*args, **kwargs):
-    logger.info(" ".join([str(s) for s in ['\033[0;36m', *args, '\033[0m']]), **kwargs)
+if __name__ == "__main__":
+    import protocol as bridge_protocol
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
+else:
+    from . import protocol as bridge_protocol
+    logger.addHandler(logging.NullHandler())
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
 
 
 def estimate_retry_delay_time(r, max_delay=10):
@@ -68,7 +66,7 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
         self.is_available = False
 
     def dataReceived(self, data):
-        #info("TCP:READ:", data)
+        #logger.info("TCP:READ:", data)
         if self.is_available:
             self.input_middlewares[0].write(data)
 
@@ -94,16 +92,16 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
                 buf = self.output_middlewares[-1].read(-1)
                 if self.is_available and len(buf) > 0:
                     self.transport.write(buf)
-                    #info("TCP:WRITE:", buf)
+                    #logger.info("TCP:WRITE:", buf)
             except Exception as e:
-                print(e)
+                logger.warning(e)
                 self.is_invalid_socket = True
                 try:
                     self.transport.close()
                     self.wq.clear()
                     self.rq.clear()
                 except Exception as e:
-                    print(e)
+                    logger.warning(e)
             while self.rq.empty() is False:
                 o = self.rq.get_nowait()
                 self.output_middlewares[0].write(o)
@@ -112,7 +110,7 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
             if len(b) > 0:
                 self.wq.put_nowait(b)
         except Exception as e:
-            print(e)
+            logger.warning(e)
 
 
 class StreamClientFactory(twisted.internet.protocol.ClientFactory):
@@ -128,7 +126,7 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
         self.update()
 
     def startedConnecting(self, connector):
-        info(f'Started to connect. {connector.host}:{connector.port} Timeout:{connector.timeout}')
+        logger.info(f'Started to connect. {connector.host}:{connector.port} Timeout:{connector.timeout}')
 
     # Override
     def on_disconnected(self):
@@ -144,7 +142,7 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
         self.retry = 0
         self.retying = False
         self.connected = True
-        success(f'Connected {addr.type}://{addr.host}:{addr.port}')
+        logger.info(f'Connected {addr.type}://{addr.host}:{addr.port}')
         s = StackedClientSocketProtocol(self.rq, self.wq)
         self.protocol_instance = s
         self.on_connected()
@@ -165,7 +163,7 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         delay = estimate_retry_delay_time(self.retry)
-        warn(f'Lost connection. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason:', reason)
+        logger.warning(f'Lost connection. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason: {reason}')
         self.on_disconnected()
         self.connected = False
         self.retying = False
@@ -173,7 +171,7 @@ class StreamClientFactory(twisted.internet.protocol.ClientFactory):
 
     def clientConnectionFailed(self, connector, reason):
         delay = estimate_retry_delay_time(self.retry)
-        warn(f'Connection failed. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason:', reason)
+        logger.warning(f'Connection failed. RetryDelay:[{self.retry}]:{round(delay,2)}s\n  Reason: {reason}')
         self.on_disconnected()
         self.connected = False
         self.retying = False
@@ -211,8 +209,6 @@ class EaterBridgeClient:
         return None
 
 
-
-
 def echo(HOST, PORT):
     class ProtocolStack(bridge.client.StreamClientFactory):
         def on_connected(self):
@@ -242,7 +238,7 @@ def echo(HOST, PORT):
             index += 1
         data = c.read()
         if isinstance(data, bytes) or isinstance(data, bytearray):
-            print(data)
+            logger.warning(data)
             request_count -= len(data)
         else:
             time.sleep(0.01)
@@ -273,13 +269,13 @@ def data2data(HOST, PORT):
     while True:
         if request_count < 2:
             if time.time() - st > 1.0:
-                logger.info("FPS:", fps_count)
+                logger.info("FPS: " + fps_count)
                 st = time.time()
                 fps_count = 0
             fps_count += 1
 
             datas = ["test", "test2"]
-            logger.info(f"Main:send({request_count}):", datas)
+            logger.info(f"Main:send({request_count}): " + datas)
             c.write(datas)
             request_count += 2
         blocks = c.read()
@@ -288,7 +284,7 @@ def data2data(HOST, PORT):
                 for data in blocks:
                     request_count -= 1
                     # TODO list / bytes
-                    logger.info(f"Main:response({request_count}):", data.decode('utf-8'))
+                    logger.info(f"Main:response({request_count}): " + data.decode('utf-8'))
                     # for data in extend:
                     #     print(data.decode('utf-8'))
                     # blocks = client.read()
