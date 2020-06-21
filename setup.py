@@ -3,16 +3,16 @@ import sys, os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-version = '1.3.0'
+version = '1.3.2'
 
 install_requires = [
     'mss',
     #'opencv-python',
     #'pygame',
+    #'PyOpenGL',
     'configparser',
     'imgcat',
     'termios',
-    #'PyOpenGL',
     'acapture',
     'twisted',
     'tqdm',
