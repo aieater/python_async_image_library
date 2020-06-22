@@ -9,6 +9,47 @@ from aimage.stub_data_loader import *
 is_native = False
 is_available_native_queue = False
 
+
+def rebuild_worker(n):
+    print("stub:rebuild_worker")
+
+
+def create_queue(n):
+    print("stub:create_queue")
+
+
+def native_decoder(data):
+    print("stub:native_decoder")
+
+
+def native_encoder(data, *, quality=90, format="jpg"):
+    print("stub:native_encoder")
+
+
+def native_fast_decoder(data):
+    print("stub:native_fast_decoder")
+
+
+def native_fast_encoder(data, *, quality=90, format="jpg"):
+    print("stub:native_fast_encoder")
+
+
+def native_load_image(path):
+    print("stub:native_load_image")
+
+
+def native_save_image(path, data, *, quality=90, format="jpg"):
+    print("stub:native_save_image")
+
+
+def native_fast_load_image(path):
+    print("stub:native_fast_load_image")
+
+
+def native_fast_save_image(path, data, *, quality=90, format="jpg"):
+    print("stub:native_fast_save_image")
+
+
 try:
     from aimage_native import *
     print('\033[0;36m' + "========================================================" + '\033[0m')
