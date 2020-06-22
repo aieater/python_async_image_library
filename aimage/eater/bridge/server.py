@@ -38,13 +38,6 @@ else:
     logger.setLevel(logging.DEBUG)
     logger.propagate = True
 
-
-
-
-
-
-
-
 #################################################################################
 # Util
 
@@ -380,10 +373,16 @@ class EaterBridgeServer():
     # def setDataBlocksFromArray(self,a):
     #     self.factory.setDataBlocksFromArray(a)
     def __init__(self, kargs):
-        self.input_queue = multiprocessing.Queue()
-        self.output_queue = multiprocessing.Queue()
-        self.signal_queue_r = multiprocessing.Queue()
-        self.signal_queue_w = multiprocessing.Queue()
+        if "VSCODE_DEUBG" in os.environ:
+            self.input_queue = queue.Queue()
+            self.output_queue = queue.Queue()
+            self.signal_queue_r = queue.Queue()
+            self.signal_queue_w = queue.Queue()
+        else:
+            self.input_queue = multiprocessing.Queue()
+            self.output_queue = multiprocessing.Queue()
+            self.signal_queue_r = multiprocessing.Queue()
+            self.signal_queue_w = multiprocessing.Queue()
 
         if "port" not in kargs:
             raise Exception("Required parameter: port was None")
@@ -447,8 +446,13 @@ class EaterBridgeServer():
 
         #runner(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w)
         #multiprocessing.set_start_method('spawn', True)
-        self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
+
+        if "VSCODE_DEUBG" in os.environ:
+            self.thread = threading.Thread(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
+        else:
+            self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         self.thread.start()
+
         # self.thread = threading.Thread(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         # self.thread.start()
 

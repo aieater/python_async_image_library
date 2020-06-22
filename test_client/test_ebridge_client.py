@@ -198,6 +198,11 @@ def image2data(HOST, PORT, fd, quality=60):
 
 
 if __name__ == "__main__":
+    # cap = aimage.open(0)
+    # while True:
+    #     check, img = cap.read()
+    #     if check:
+    #         aimage.show(img)
     # cselector.selector(["image2image", "image2json"])
 
     HOST = "localhost"
