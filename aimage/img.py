@@ -93,13 +93,13 @@ def draw_image_alpha(img, img_rgba, sx, sy):  # @public
 
 def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
     h, w, c = img.shape
-    cv2.rectangle(img, (0, h), (w, h - 20), bg, -1)
+    cv2.rectangle(img=img, pt1=(0, h), pt2=(w, h - 20), color=bg, thickness=-1)
     cv2.putText(img, message, (5, h - 4), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
 def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
     h, w, c = img.shape
-    cv2.rectangle(img, (0, 0), (w, 20), bg, -1)
+    cv2.rectangle(img=img, pt1=(0, 0), pt2=(w, 20), color=bg, thickness=-1)
     cv2.putText(img, message, (5, 17), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
@@ -269,11 +269,11 @@ def resize(img, w, h=None, interpolation="fastest"):  # @public
 
 
 def draw_rect(img, s, t, c=(255, 0, 0), line=2):  # @public
-    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), (int(c[0]), int(c[1]), int(c[2])), line)
+    cv2.rectangle(img=img, pt1=(int(s[0]), int(s[1])), pt2=(int(t[0]), int(t[1])), color=(int(c[0]), int(c[1]), int(c[2])), thickness=line)
 
 
 def draw_fill_rect(img, s, t, c=(255, 0, 0)):  # @public
-    cv2.rectangle(img, (int(s[0]), int(s[1])), (int(t[0]), int(t[1])), (int(c[0]), int(c[1]), int(c[2])), -1)
+    cv2.rectangle(img=img, pt1=(int(s[0]), int(s[1])), pt2=(int(t[0]), int(t[1])), color=(int(c[0]), int(c[1]), int(c[2])), thickness=-1)
 
 
 def file_type(d):  # @public
@@ -352,9 +352,9 @@ def draw_box(image, box, color, caption=None, fontScale=0.5):  # @public
     c1 = (int(box[0]), int(box[1]))
     c2 = (int(box[2]), int(box[3]))
     cr = (int(color[0]), int(color[1]), int(color[2]))
-    cv2.rectangle(image, c1, c2, cr, box_thick)
+    cv2.rectangle(img=image, pt1=c1, pt2=c2, color=cr, thickness=box_thick)
     if caption:
         t_size = cv2.getTextSize(caption, 0, fontScale, thickness=box_thick // 2)[0]
         c3 = (int(c1[0] + t_size[0]), int(c1[1] - t_size[1] - 3))
-        cv2.rectangle(image, c1, c3, cr, -1)  # filled
+        cv2.rectangle(img=image, pt1=c1, pt2=c3, color=cr, thickness=-1)  # filled
         cv2.putText(image, caption, (int(box[0]), int(box[1]) - 2), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0, 0, 0), box_thick // 2, lineType=cv2.LINE_AA)
