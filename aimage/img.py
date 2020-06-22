@@ -92,19 +92,31 @@ def draw_image_alpha(img, img_rgba, sx, sy):  # @public
 
 
 def draw_footer(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
+    if isinstance(img, np.ndarray) is False: raise Exception("img must be numpy.")
+    if img.dtype != np.uint8: raise Exception("img dtype must be np.uint8.")
     h, w, c = img.shape
+    color = [int(c) for c in color]
+    font_type = int(font_type)
     cv2.rectangle(img=img, pt1=(0, h), pt2=(w, h - 20), color=bg, thickness=-1)
     cv2.putText(img, message, (5, h - 4), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
 def draw_title(img, message, color=(255, 200, 55), bg=(55, 55, 55), font_scale=1, font_type=0):  # @public
+    if isinstance(img, np.ndarray) is False: raise Exception("img must be numpy.")
+    if img.dtype != np.uint8: raise Exception("img dtype must be np.uint8.")
     h, w, c = img.shape
+    color = [int(c) for c in color]
+    font_type = int(font_type)
     cv2.rectangle(img=img, pt1=(0, 0), pt2=(w, 20), color=bg, thickness=-1)
     cv2.putText(img, message, (5, 17), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
 def draw_text(img, message, x=5, y=17, color=(255, 200, 55), font_scale=1, font_type=0):  # @public
-    cv2.putText(img, message, (x, y), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
+    if isinstance(img, np.ndarray) is False: raise Exception("img must be numpy.")
+    if img.dtype != np.uint8: raise Exception("img dtype must be np.uint8.")
+    color = [int(c) for c in color]
+    font_type = int(font_type)
+    cv2.putText(img, message, (int(x), int(y)), FONT_TYPE[font_type], font_scale, color, 1, lineType=cv2.LINE_AA)
 
 
 def is_image_ext(f):  # @public
@@ -209,11 +221,7 @@ def native_fast_load_image(path):
 
 
 def native_fast_save_image(path, data, *, quality=90, format="jpg"):
-    compressed_data = native_module.fast_image_encoder(data, quality, format)
-    fp = _dopen(os.path.expanduser(path), "wb")
-    fp.write(compressed_data)
-    fp.close()
-    #return native_module.fast_image_encoder(path,data,quality,format)
+    raise Exception("You must install aimage-native-ext")
 
 
 def decoder(data):  # @public
@@ -325,6 +333,11 @@ COLOR_TABLE = generate_colors(1024)  # public
 
 
 def draw_box(image, box, color, caption=None, fontScale=0.5):  # @public
+    if isinstance(image, np.ndarray) is False: raise Exception("image must be numpy.")
+    if image.dtype != np.uint8: raise Exception("image dtype must be np.uint8.")
+    color = [int(c) for c in color]
+
+
     if type(box) == np.ndarray:
         if len(box.shape) == 1 and len(box) == 4:
             pass

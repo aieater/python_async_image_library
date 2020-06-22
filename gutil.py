@@ -4,9 +4,6 @@ import aimage
 import os
 import numpy as np
 import cv2
-import pyperclip
-
-
 
 def plot_h2(canvas, hh, yy, ix, iy, gx, gy):
     hh2, ilist, colors = estimate_coord2d(canvas.shape, hh, yy, ix, iy, gx, gy)
@@ -125,6 +122,7 @@ def generate(shape, entry):
 
 
 def plot(embedding, x_vectors, y_vectors, f_paths):
+    import pyperclip
     drawing = False  # true if mouse is pressed
     ix, iy = -1, -1
     event = None
@@ -168,12 +166,3 @@ def plot(embedding, x_vectors, y_vectors, f_paths):
         if k == 27:
             break
     cv2.destroyAllWindows()
-
-
-def test():
-    x = 0
-    def test2():
-        print(x)
-    x = 10
-    test2()
-test()
