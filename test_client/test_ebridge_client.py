@@ -116,10 +116,26 @@ def image2image(HOST, PORT, fd, quality):
             v_fps_count = 0
             req_fps_count = 0
             f_fps_count = 0
-        if req_queue_count <= 30 and now - previous_time >= fps_limit:
+
+        LIMIT_REQ = 8
+        LIMIT_HF_REQ = 5
+        if req_fps_cache < 20:
+            LIMIT_REQ = 4
+            LIMIT_HF_REQ = 2
+        elif req_fps_cache < 30:
+            LIMIT_REQ = 5
+            LIMIT_HF_REQ = 3
+        elif req_fps_cache < 40:
+            LIMIT_REQ = 6
+            LIMIT_HF_REQ = 4
+        elif req_fps_cache < 50:
+            LIMIT_REQ = 7
+            LIMIT_HF_REQ = 5
+
+        if req_queue_count <= LIMIT_REQ and now - previous_time >= (1.0/(req_fps_cache+1)*0.90):
             previous_time = now
             push = True
-            if req_queue_count > 10 and (req_queue_count % 2 == 0):
+            if req_queue_count >= LIMIT_HF_REQ and (req_queue_count % 2 == 0):
                 push = False
             if push or True:
                 check, img = cap.read()
