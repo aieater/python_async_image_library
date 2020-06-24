@@ -7,6 +7,7 @@ import queue
 import sys
 import threading
 import uuid
+import multiprocessing
 
 import twisted.internet.protocol
 import twisted.internet.reactor
@@ -56,6 +57,8 @@ class StackedClientSocketProtocol(twisted.internet.protocol.Protocol):
     def connectionMade(self):
         import aimage
         if aimage.is_native:
+            cores = multiprocessing.cpu_count()
+            aimage.rebuild_worker(cores)
             aimage.create_queue(self.uuid)
         self.is_available = True
 

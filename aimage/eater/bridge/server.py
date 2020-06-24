@@ -3,12 +3,12 @@ import datetime
 import logging
 import multiprocessing
 import os
-import sys
 import platform
 import queue
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -161,6 +161,8 @@ class StackedServerSocketProtocol(twisted.internet.protocol.Protocol):
     def connectionMade(self):
         import aimage
         if aimage.is_native:
+            cores = multiprocessing.cpu_count()
+            aimage.rebuild_worker(cores)
             aimage.create_queue(self.uuid)
         self.is_available = True
         self.global_factory.clients[self.uuid] = self
@@ -452,15 +454,6 @@ class EaterBridgeServer():
         else:
             self.thread = multiprocessing.Process(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
         self.thread.start()
-
-        # self.thread = threading.Thread(target=runner, args=(self.input_queue, self.output_queue, self.signal_queue_r, self.signal_queue_w), daemon=True)
-        # self.thread.start()
-
-        # self.thread = multiprocessing.Process(target=reactor.run,args=(False,),daemon=True)
-        # self.thread.start()
-        # self.thread = threading.Thread(target=reactor.run,args=(False,))
-        # self.thread.setDaemon(True)
-        # self.thread.start()
 
     def update(self):
         return 0

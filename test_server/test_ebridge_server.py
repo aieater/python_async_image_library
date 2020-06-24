@@ -4,8 +4,7 @@ import logging
 import signal
 import sys
 import aimage
-
-#aimage.is_available_native_queue = True
+aimage.is_available_native_queue = True
 
 import numpy as np
 from easydict import EasyDict as edict
@@ -84,7 +83,7 @@ def data2data(args):
             self.data_queue += new_data
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = bridge.server.slice_as_batch_size(self.data_queue, 128)
-                logger.debug("EchoServer:update", self.data_queue, batch_data)
+                #logger.debug("EchoServer:update", self.data_queue, batch_data)
                 stored_datablocks = bridge.server.pack_array_datablock(socket_mapper, batch_data)
                 self.setDataBlocksFromArray(stored_datablocks)
             return len(new_data)
@@ -124,7 +123,7 @@ def image2image(args):
             self.data_queue += new_data
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = bridge.server.slice_as_batch_size(self.data_queue, 128)
-                logger.debug("EchoServer:update", self.data_queue, batch_data)
+                #logger.debug("EchoServer:update", self.data_queue, batch_data)
                 batch_data = np.uint8(batch_data)
                 for i in range(len(batch_data)):
                     img = batch_data[i]
@@ -170,7 +169,7 @@ def image2image(args):
             self.data_queue += new_data
             if len(self.data_queue) > 0:
                 batch_data, socket_mapper, self.data_queue = bridge.server.slice_as_batch_size(self.data_queue, 4)
-                logger.debug("EchoServer:update", self.data_queue, batch_data)
+                #logger.debug("EchoServer:update", self.data_queue, batch_data)
                 self.model.eval(batch_data)
                 stored_datablocks = bridge.server.pack_array_datablock(socket_mapper, batch_data)
                 self.setDataBlocksFromArray(stored_datablocks)
@@ -196,7 +195,7 @@ if __name__ == "__main__":
     args.key = None
     args.host = "::0"
     args.port = 4649
-    args.quality = 60
+    args.quality = 30
 
 
     image2image(args)
