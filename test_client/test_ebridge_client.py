@@ -175,43 +175,80 @@ def image2image(HOST, PORT, fd, quality):
 if __name__ == "__main__":
     servers = [
         edict({
-            "title": "local(devel)",
+            "title": "Local Development",
+            "service": "None",
             "host": "localhost",
             "port": 4649,
             "ssl": None,
             "key": None,
         }),
         edict({
-            "title": "efficient_detb0",
+            "title": "Face Detector EfficientDetB0",
             "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "efficient_detb0",
             "port": 3000,
             "ssl": None,
             "key": None,
         }),
         edict({
-            "title": "faceid",
+            "title": "Face ID",
             "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "faceid",
             "port": 4000,
             "ssl": None,
             "key": None,
         }),
         edict({
-            "title": "faceid_cos",
+            "title": "Face ID CosDis Estimator",
             "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "faceid_cos",
             "port": 5000,
             "ssl": None,
             "key": None,
         }),
         edict({
-            "title": "yolov4",
+            "title": "Face Detector YoloV4",
             "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "yolov4",
             "port": 6000,
+            "ssl": None,
+            "key": None,
+        }),
+        edict({
+            "title": "Face Detector EfficientDetB0@Dev",
+            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "efficient_detb0_dev",
+            "port": 3001,
+            "ssl": None,
+            "key": None,
+        }),
+        edict({
+            "title": "Face ID@Dev",
+            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "faceid_dev",
+            "port": 4001,
+            "ssl": None,
+            "key": None,
+        }),
+        edict({
+            "title": "Face ID CosDis Estimator@Dev",
+            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "faceid_cos_dev",
+            "port": 5001,
+            "ssl": None,
+            "key": None,
+        }),
+        edict({
+            "title": "Face Detector-Detector@Dev",
+            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
+            "service": "yolov4_dev",
+            "port": 6001,
             "ssl": None,
             "key": None,
         }),
     ]
 
-    index, title = cselector.selector([f"{o.title.ljust(20)} [{o.host}]:{o.port}" for o in servers], title="Select an inference server.")
+    index, title = cselector.selector([f"{o.title.ljust(40)} [{o.host}]:{o.port} @ {o.service}" for o in servers], title="Select an inference server.")
     selected = servers[index]
     for k in selected:
         v = selected[k]
