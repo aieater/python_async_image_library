@@ -1,0 +1,10 @@
+[
+    {
+        "title": "Local Development",
+        "service": "None",
+        "host": "localhost",
+        "port": 4649,
+        "ssl": null,
+        "key": null
+    }
+]
