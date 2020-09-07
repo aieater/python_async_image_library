@@ -199,6 +199,7 @@ class EaterBridgeClient:
 
     def destroy(self):
         twisted.internet.reactor.stop()
+        # self.thread.stop()
 
     def write(self, blocks):
         if self.rq.empty():

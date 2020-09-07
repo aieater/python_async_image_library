@@ -374,7 +374,11 @@ class EaterBridgeServer():
     #     return self.factory.getDataBlocksAsArray(size)
     # def setDataBlocksFromArray(self,a):
     #     self.factory.setDataBlocksFromArray(a)
-    def __init__(self, kargs):
+    def __init__(self, _dict={}, **kargs):
+        for k in kargs:
+            _dict[k] = kargs[k]
+        kargs = _dict
+
         if "VSCODE_DEUBG" in os.environ:
             self.input_queue = queue.Queue()
             self.output_queue = queue.Queue()

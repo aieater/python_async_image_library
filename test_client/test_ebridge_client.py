@@ -12,9 +12,11 @@ import cv2
 import numpy as np
 import psutil
 import pyglview
+import json
 from easydict import EasyDict as edict
 
 import aimage
+import acapture
 import aimage.eater.bridge as bridge
 
 aimage.is_available_native_queue = True
@@ -34,6 +36,80 @@ def setup_log(name=__name__, level=logging.DEBUG):
 
 setup_log("aimage.eater.bridge", level=logging.DEBUG)
 logger = setup_log(__name__, logging.DEBUG)
+
+G_stop_signal = False
+
+
+def video2images(HOST, PORT, fd, quality):
+    cap = aimage.open(fd, frame_capture=True, loop=False)
+
+    class ProtocolStack(bridge.client.StreamClientFactory):
+        def on_connected(self):
+            s = self.protocol_instance
+            s.add_output_protocol(bridge.protocol.ImageEncoder(quality=quality))
+            s.add_output_protocol(bridge.protocol.LengthSplitOut())
+
+            s.add_input_protocol(bridge.protocol.LengthSplitIn())
+            s.add_input_protocol(bridge.protocol.ImageDecoder())
+
+        def on_disconnected(self):
+            pass
+
+    client_socket = bridge.client.EaterBridgeClient(host=HOST, port=PORT, protocol_stack=ProtocolStack)
+    client_socket.start()
+
+    def terminate(a, b):
+        global G_stop_signal
+        G_stop_signal = True
+        client_socket.destroy()
+
+    signal.signal(signal.SIGINT, terminate)
+    signal.signal(signal.SIGTERM, terminate)
+    writer = acapture.VideoWriteStream(output=fd+".output.mp4", input_stream=cap)
+    q = 0
+    last = time.time()
+    while True:
+        blocks = client_socket.read()
+        if blocks is not None:
+            for new_frame in blocks:
+                writer.write(new_frame)
+                aimage.show(new_frame)
+                q -= 1
+        if q < 4:
+            check, frame = cap.read()
+            if check:
+                client_socket.write([frame])
+                q += 1
+                last = time.time()
+        if cap.is_ended() and q == 0 or (time.time()-last>20):
+            break
+    writer.close()
+
+
+        # client_socket.write([img])
+        # img = None
+        # blocks = client_socket.read()
+        # if blocks is not None:
+        #     if isinstance(blocks, list):
+        #         for data in blocks:
+        #             if img is None: img = np.array(data)
+        #             sub = now - frame_time_queue.pop(0)
+        #             sub *= 1000
+        #             req_queue_count -= 1
+        #             req_fps_count += 1
+        # if img is not None:
+        #     aimage.draw_title(img=img, message=display_info + f' {str(int(sub)).rjust(4)}ms B:{str(req_queue_count).rjust(2)}')
+        #     aimage.draw_footer(img=img, message=message)
+        #     view.set_image(img)
+        #     frame_index += 1
+        #     v_fps_count += 1
+
+
+
+
+
+
+
 
 
 def image2image(HOST, PORT, fd, quality):
@@ -55,8 +131,9 @@ def image2image(HOST, PORT, fd, quality):
     client_socket.start()
 
     def terminate(a, b):
+        global G_stop_signal
+        G_stop_signal = True
         client_socket.destroy()
-        exit(9)
 
     signal.signal(signal.SIGINT, terminate)
     signal.signal(signal.SIGTERM, terminate)
@@ -98,6 +175,8 @@ def image2image(HOST, PORT, fd, quality):
 
     def loop():
         nonlocal previous_img, client_socket, fps_limit, previous_time, time_cache, cap, view, f_fps_count, f_fps_cache, v_fps_count, v_fps_cache, req_fps_cache, req_fps_count, req_queue_count, message, frame_times, frame_time_queue, frame_index
+        if G_stop_signal:
+            raise Exception("Stop")
         now = time.time()
         if now - time_cache > 1.0:
             mem = psutil.virtual_memory()
@@ -171,83 +250,16 @@ def image2image(HOST, PORT, fd, quality):
     view.set_loop(loop)
     view.start()
 
-
 if __name__ == "__main__":
-    servers = [
-        edict({
-            "title": "Local Development",
-            "service": "None",
-            "host": "localhost",
-            "port": 4649,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face Detector EfficientDetB0",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "efficient_detb0",
-            "port": 3000,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face ID",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "faceid",
-            "port": 4000,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face ID CosDis Estimator",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "faceid_cos",
-            "port": 5000,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face Detector YoloV4",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "yolov4",
-            "port": 6000,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face Detector EfficientDetB0@Dev",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "efficient_detb0_dev",
-            "port": 3001,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face ID@Dev",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "faceid_dev",
-            "port": 4001,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face ID CosDis Estimator@Dev",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "faceid_cos_dev",
-            "port": 5001,
-            "ssl": None,
-            "key": None,
-        }),
-        edict({
-            "title": "Face Detector-Detector@Dev",
-            "host": "240d:1a:1c6:2400:216:3eff:fec8:25e8",
-            "service": "yolov4_dev",
-            "port": 6001,
-            "ssl": None,
-            "key": None,
-        }),
-    ]
+    # HOST PORT FD QUALITY
+    print(sys.argv)
+    # image2image("240d:1a:1c6:2400:216:3eff:fec8:25e8", 4000, "/Users/johndoe/Downloads/twice.mp4", 30)
+    video2images(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
+    # image2image(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
 
+if __name__ == "__main2__":
+
+    j = json.load(open("test_ebridge_client.json")) 
     index, title = cselector.selector([f"{o.title.ljust(40)} [{o.host}]:{o.port} @ {o.service}" for o in servers], title="Select an inference server.")
     selected = servers[index]
     for k in selected:
