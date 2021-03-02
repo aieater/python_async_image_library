@@ -304,6 +304,7 @@ class AggressiveImageGenerator:
             if ret is not None and len(ret) > 0:
                 self.q -= len(ret)
                 self.output_buffer += ret
+                self.stub_buffer = []
                 if len(self.output_buffer) >= batch_size or self.iindex == self.oindex + len(self.output_buffer):
                     buf = self.output_buffer[0:batch_size]
                     self.output_buffer = self.output_buffer[batch_size:]
