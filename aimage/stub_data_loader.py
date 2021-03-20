@@ -28,7 +28,7 @@ class AggressiveImageGenerator:
          - label_path: <output label path> for resume
          - loss: "tree" / "list" 
          - target_size: (w,h,c) # shape
-         - data_align: True / False # adjust data length for each classes
+         - data_align: 0.0~1.0 # adjust data length for each classes
          - rescale: 1/255.0
          - data_aug_params: dict{}
          - progress_bar: True / False
@@ -156,6 +156,7 @@ class AggressiveImageGenerator:
                 # if idx_key not in class_index_table:
                 #    class_index_table[idx_key] = {"name":self.get_name(idx_key),"results":[],"total":0}
                 class_index_table[idx_key]["total"] += 1
+            # Estimate Max
             vmax = 0
             for k in table:
                 v = table[k]
@@ -164,22 +165,23 @@ class AggressiveImageGenerator:
                     vmax = vlen
                 if self.verbose:
                     print(self.get_name(k), ":", vlen)
-            if self.verbose:
-                print("Max => ", vmax)
+            if self.verbose: print("Max => ", vmax)
+            # Make a data aligned table.
             for k in table:
                 v = table[k]
-                i = 0
                 vlen = len(v)
                 ns = []
-                for x in range(vmax):
+                tlen = vlen + int((vmax - vlen) * self.data_align)
+                for x in range(tlen):
                     ns.append(v[x % vlen])
                 table[k] = ns
+            # Make a data aligned array.
             new_datas = []
             for k in table:
                 v = table[k]
                 vlen = len(v)
                 new_datas += v
-            if self.data_align:
+            if self.data_align > 0:
                 if self.verbose:
                     print("Total", len(self.datas), "=>", vmax, "x", len(table), "=>", len(new_datas))
                 self.datas = new_datas

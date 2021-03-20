@@ -91,7 +91,7 @@ def generate(shape, entry):
         label_path=label_path,
         loss=loss,
         target_size=INPUT_SHAPE,
-        data_align=False,  # adjust data length for each classes
+        data_align=0.0,  # adjust data length for each classes
         rescale=rescale,
         shuffle=True,
         verbose=False,
